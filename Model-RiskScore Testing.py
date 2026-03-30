@@ -11,7 +11,7 @@ Original file is located at
 
 from transformers import pipeline
 
-classifier = pipeline("text-classification", model="distilbert-base-uncased-finetuned-sst-2-english")
+classifier = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
 
 message = "URGENT: Your bank account has been locked. Verify now: http://secure-login.xyz"
 
