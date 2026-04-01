@@ -8,6 +8,5 @@ Install the CPU-only version of transformers:
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install transformers
 ```
-
-## Gemma 2b
+## tiny llama
 
