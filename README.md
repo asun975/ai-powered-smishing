@@ -1,7 +1,7 @@
 # ai-powered-smishing
 ## DistilBERT transformer model
-[https://huggingface.co/docs/transformers/en/model_doc/distilbert?usage=Pipeline#transformers.DistilBertModel](DistilBERT docs)
-[https://huggingface.co/docs/transformers/en/installation](transformers installation)
+- [DistilBERT docs](https://huggingface.co/docs/transformers/en/model_doc/distilbert?usage=Pipeline#transformers.DistilBertModel)
+- [transformers installation](https://huggingface.co/docs/transformers/en/installation)
 
 Install the CPU-only version of transformers:
 ```
