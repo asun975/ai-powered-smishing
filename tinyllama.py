@@ -1,8 +1,10 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 # To use Transformers in an offline or firewalled environment requires the downloaded and cached files ahead of time. 
-tokenizer = AutoTokenizer.from_pretrained(r"models\huggingface\hub\models--TinyLlama--TinyLlama-1.1B-Chat-v1.0\snapshots\fe8a4ea1ffedaf415f4da2f062534de366a451e6", local_files_only=True)
-model = AutoModelForCausalLM.from_pretrained(r"models\huggingface\hub\models--TinyLlama--TinyLlama-1.1B-Chat-v1.0\snapshots\fe8a4ea1ffedaf415f4da2f062534de366a451e6", local_files_only=True)
+model_name = "C:\\Users\\ashle\\.cache\\huggingface\\hub\\models--TinyLlama--TinyLlama-1.1B-Chat-v1.0\\snapshots\\fe8a4ea1ffedaf415f4da2f062534de366a451e6"
+
+tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
+model = AutoModelForCausalLM.from_pretrained(model_name, local_files_only=True)
 
 messages = [
     {"role": "user", "content": "Who are you?"},
