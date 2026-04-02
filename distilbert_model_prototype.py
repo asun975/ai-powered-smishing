@@ -91,7 +91,7 @@ training_args = TrainingArguments(
     per_device_train_batch_size=16,
     per_device_eval_batch_size=16,
     num_train_epochs=3,
-    evaluation_strategy="epoch",
+    eval_strategy="epoch",
     save_strategy="epoch",
     logging_dir="./logs",
     load_best_model_at_end=True
@@ -105,7 +105,7 @@ trainer = Trainer(
     args=training_args,
     train_dataset=dataset["train"],
     eval_dataset=dataset["test"],
-    tokenizer=tokenizer,
+    processing_class=tokenizer,
     compute_metrics=compute_metrics
 )
 
