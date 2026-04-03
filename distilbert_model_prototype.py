@@ -6,14 +6,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 os.environ["HF_DATASETS_OFFLINE"] = '1'
 os.environ["TRANSFORMERS_OFFLINE"] = '1'
 
-import matplotlib.pyplot as plt
-import pandas as pd
 import torch
-import re
-from datasets import Dataset
-from nltk.stem import SnowballStemmer
-from sklearn.feature_extraction import _stop_words
-
 from transformers import (
     AutoTokenizer,
     AutoModelForSequenceClassification,
@@ -22,6 +15,12 @@ from transformers import (
     pipeline
 )
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+
+import pandas as pd
+import re
+from datasets import Dataset
+from nltk.stem import SnowballStemmer
+from sklearn.feature_extraction import _stop_words
 
 #model_path = "./models/distilbert/distilbert-base-uncased"
 model_path = "./models/sms-spam-model-0"
