@@ -2,25 +2,23 @@ import os
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
-#os.environ["HF_HOME"] = "models"
-#os.environ["HF_DATASETS_OFFLINE"] = 1 
-#os.environ["TRANSFORMERS_OFFLINE"] = 1
+os.environ["HF_DATASETS_OFFLINE"] = '1'
+os.environ["TRANSFORMERS_OFFLINE"] = '1'
 
 # To use Transformers in an offline or firewalled environment requires the downloaded and cached files ahead of time. 
-#model_name = "C:\\Users\\ashle\\.cache\\huggingface\\hub\\models--TinyLlama--TinyLlama-1.1B-Chat-v1.0\\snapshots\\fe8a4ea1ffedaf415f4da2f062534de366a451e6"
-
-#tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
-#model = AutoModelForCausalLM.from_pretrained(model_name, local_files_only=True, torch_dtype=torch.float16)
+tokenizer = AutoTokenizer.from_pretrained("models/TinyLlama/TinyLlama-1.1B-Chat-v1.0", local_files_only=True)
+model = AutoModelForCausalLM.from_pretrained("models/TinyLlama/TinyLlama-1.1B-Chat-v1.0", local_files_only=True, torch_dtype=torch.float16)
+classifier = pipeline(task="text-classification", model="models/mrm8488/bert-tiny-finetuned-sms-spam-detection")
 
 # Save tokenizer and model to local dir
-tokenizer = AutoTokenizer.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
-model = AutoModelForCausalLM.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0", torch_dtype=torch.float16)
+#tokenizer = AutoTokenizer.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+#model = AutoModelForCausalLM.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0", torch_dtype=torch.float16)
 
-tokenizer.save_pretrained("models/TinyLlama/TinyLlama-1.1B-Chat-v1.0")
-model.save_pretrained("models/TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+#tokenizer.save_pretrained("models/TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+#model.save_pretrained("models/TinyLlama/TinyLlama-1.1B-Chat-v1.0")
 
-classifier = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
-classifier.save_pretrained("models/mrm8488/bert-tiny-finetuned-sms-spam-detection")
+#classifier = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
+#classifier.save_pretrained("models/mrm8488/bert-tiny-finetuned-sms-spam-detection")
 
 """
 messages = [
