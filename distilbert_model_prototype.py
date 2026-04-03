@@ -1,5 +1,4 @@
 # Author: GustavoDeVera
-# Modified by asun975
 
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
