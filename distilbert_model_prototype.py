@@ -3,6 +3,8 @@
 
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+os.environ["HF_DATASETS_OFFLINE"] = '1'
+os.environ["TRANSFORMERS_OFFLINE"] = '1'
 
 import pandas as pd
 import torch
@@ -19,6 +21,10 @@ from transformers import (
     pipeline
 )
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+
+model_path = "models/distilbert/distilbert-base-uncased"
+tokenizer = AutoTokenizer.from_pretrained(model_path)
+model = AutoModelForSequenceClassification.from_pretrained(model_path)
 
 # -------------------------------
 # 1. LOAD DATA
@@ -68,7 +74,7 @@ df["message"] = df["message"].apply(lambda x: ' '.join(x))
 
 # Show first 5 rows of dataframe
 print(df.head())
-"""
+
 # -------------------------------
 # 2. CONVERT TO HF DATASET
 # -------------------------------
@@ -77,10 +83,10 @@ dataset = Dataset.from_pandas(df)
 # Train-test split
 dataset = dataset.train_test_split(test_size=0.2)
 
+
 # -------------------------------
 # 3. TOKENIZATION
 # -------------------------------
-tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
 
 def tokenize(example):
     return tokenizer(
@@ -101,10 +107,10 @@ dataset.set_format(
 # 4. LOAD MODEL
 # -------------------------------
 model = AutoModelForSequenceClassification.from_pretrained(
-    "distilbert-base-uncased",
+    model_path,
     num_labels=2
 )
-
+"""
 # -------------------------------
 # 5. METRICS
 # -------------------------------
