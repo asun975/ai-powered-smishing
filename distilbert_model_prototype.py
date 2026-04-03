@@ -1,11 +1,16 @@
 # Author: GustavoDeVera
+# modified by Ashley Sun
 
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 import pandas as pd
 import torch
+import re
 from datasets import Dataset
+from nltk.stem import SnowballStemmer
+from sklearn.feature_extraction import _stop_words
+
 from transformers import (
     AutoTokenizer,
     AutoModelForSequenceClassification,
@@ -29,6 +34,41 @@ df["label"] = df["label"].map({"ham": 0, "spam": 1})
 # Remove nulls
 df = df.dropna()
 
+
+""" 
+1.1 Data Preprocessing
+could make a function for this or use distilBERT data cleaning methods if any
+"""
+
+# Show info about df
+print(df.info())
+
+# Convert Message column to lowercase
+df["message"] = df["message"].str.lower()
+
+# Remove https URLs
+#df["message"] = df["message"].apply(lambda x: re.sub(r'http\S+', '', x))
+
+# Replace a tab, new line or any sequence of +2 whitespaces with 
+# a single whitespace
+df["message"] = df["message"].apply(lambda x: re.sub(r"\\t\s+", ' ', x).strip())
+
+# Remove non-lower case characters and whitespace
+df["message"] = df["message"].apply(lambda x: re.sub(r"[^a-z\s]", '', x))
+
+# Remove english stop words
+df["message"] = df["message"].apply(lambda x: [word for word in x.split() if word not in _stop_words.ENGLISH_STOP_WORDS])
+
+# Keep root word (Stemming/Lemmanization)
+stemmer = SnowballStemmer('english')
+df["message"] = df["message"].apply(lambda x: [stemmer.stem(word) for word in x])
+
+# Convert message column back to string
+df["message"] = df["message"].apply(lambda x: ' '.join(x))
+
+# Show first 5 rows of dataframe
+print(df.head())
+"""
 # -------------------------------
 # 2. CONVERT TO HF DATASET
 # -------------------------------
@@ -171,4 +211,4 @@ tests = [
 
 for t in tests:
     print(predict(t))
-
+"""
