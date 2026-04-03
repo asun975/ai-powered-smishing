@@ -170,9 +170,9 @@ try:
     def check_save_path(model_path):
         path_to_save = model_path
         while os.path.exists(path_to_save):
-            # Assuming model_path follows ./models/sms-spam-model-#
+            # Assuming model are saved to ./models/sms-spam-model-#
             version = int(path_to_save.split('-')[-1])
-            path_to_save = os.path.join("..", "models","sms-spam-model-"+str(version+1))
+            path_to_save = os.path.join("models","sms-spam-model-"+str(version+1))
             print(f"Checking path: {path_to_save}")
 
         return path_to_save
