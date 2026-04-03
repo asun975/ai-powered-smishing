@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import torch
 import re
-import shap
 from datasets import Dataset
 from nltk.stem import SnowballStemmer
 from sklearn.feature_extraction import _stop_words
@@ -44,10 +43,9 @@ df["label"] = df["label"].map({"ham": 0, "spam": 1})
 df = df.dropna()
 
 
-""" 
-1.1 Data Preprocessing
-could make a function for this or use distilBERT data cleaning methods if any
-"""
+
+# 1.1 Data Preprocessing
+# could make a function for this or use distilBERT data cleaning methods if any
 
 # Show info about df
 print(df.info())
@@ -142,7 +140,7 @@ try:
         learning_rate=2e-5,
         per_device_train_batch_size=16,
         per_device_eval_batch_size=16,
-        num_train_epochs=1,
+        num_train_epochs=3,
         eval_strategy="epoch",
         save_strategy="epoch",
         logging_dir="./logs",
