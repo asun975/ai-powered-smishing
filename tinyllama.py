@@ -7,10 +7,10 @@ model_name = "C:\\Users\\ashle\\.cache\\huggingface\\hub\\models--TinyLlama--Tin
 tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
 model = AutoModelForCausalLM.from_pretrained(model_name, local_files_only=True, torch_dtype=torch.float16)
 
+# Download tiny llama tokenizer and model from Hugging Face
+#tokenizer = AutoTokenizer.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+#model = AutoModelForCausalLM.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0", torch_dtype=torch.float16)
 """
-tokenizer = AutoTokenizer.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
-model = AutoModelForCausalLM.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
-
 messages = [
     {"role": "user", "content": "Who are you?"},
 ]
