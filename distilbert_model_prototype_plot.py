@@ -145,7 +145,9 @@ try:
         eval_strategy="epoch",
         save_strategy="epoch",
         logging_dir="./logs",
-        load_best_model_at_end=True
+        load_best_model_at_end=True,
+        use_cpu=True,
+        dataloader_pin_memory=False
     )
 
     # -------------------------------
