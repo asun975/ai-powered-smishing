@@ -23,7 +23,7 @@ from nltk.stem import SnowballStemmer
 from sklearn.feature_extraction import _stop_words
 
 model_path = "./models/distilbert/distilbert-base-uncased"
-#model_path = "./models/sms-spam-model-0"
+#model_path = "./models/sms-spam-model1-0"
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 model = AutoModelForSequenceClassification.from_pretrained(model_path)
 
@@ -32,53 +32,62 @@ model = AutoModelForSequenceClassification.from_pretrained(model_path)
 # -------------------------------
 df = pd.read_csv("spam.csv")
 
-# Rename columns if needed
-df.columns = ["label", "message"]
-
-# Convert labels to numeric
-df["label"] = df["label"].map({"ham": 0, "spam": 1})
-
-# Remove nulls
-df = df.dropna()
-
-
-
-# 1.1 Data Preprocessing
-# could make a function for this or use distilBERT data cleaning methods if any
-
+df=pd.read_csv(r"C:\Users\ashle\GitHub\ai-powered-smishing\dataset\SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION\Dataset_5971.csv")
 # Show info about df
 print(df.info())
+print(df.columns)
 
-# Convert Message column to lowercase
-df["message"] = df["message"].str.lower()
+# normalize labels
+df_cleaned = df.copy()
+df_cleaned['LABEL'] = df_cleaned['LABEL'].str.lower()
+df_cleaned['LABEL'] = df_cleaned['LABEL'].apply(lambda x: re.sub('smishing', 'spam', x))
 
-# Remove https URLs
-#df["message"] = df["message"].apply(lambda x: re.sub(r'http\S+', '', x))
+# Remove columns
+df_cleaned.drop(columns=['URL', 'EMAIL', 'PHONE'], inplace=True)
+
+# Remove rows with NaN
+df_cleaned.dropna()
+
+# Text preprocessing
+# Rename columns if needed
+df_cleaned.columns = ["label", "message"]
+
+# Convert message column to lowercase
+df_cleaned["message"] = df_cleaned["message"].str.lower()
+
+# Convert labels to numeric - fix later
+df_cleaned["label"] = df_cleaned["label"].map({"ham": 0, "spam": 1}).astype('int')
+
+# Remove URLs
+df_cleaned["message"] = df_cleaned["message"].apply(lambda x: re.sub(r'http\S+', '', x))
+
+# Remove email strings
+df_cleaned["message"] = df_cleaned["message"].apply(lambda x: re.sub(r'\w+@\w+\.\w+', '', x))
 
 # Replace a tab, new line or any sequence of +2 whitespaces with 
 # a single whitespace
-df["message"] = df["message"].apply(lambda x: re.sub(r"\\t\s+", ' ', x).strip())
+df_cleaned["message"] = df_cleaned["message"].apply(lambda x: re.sub(r"\\t\s+", ' ', x).strip())
 
-# Remove non-lower case characters and whitespace
-df["message"] = df["message"].apply(lambda x: re.sub(r"[^a-z\s]", '', x))
+# Remove non-lower case characters and non-whitespace
+df_cleaned["message"] = df_cleaned["message"].apply(lambda x: re.sub(r"[^a-z\s]", '', x))
 
 # Remove english stop words
-df["message"] = df["message"].apply(lambda x: [word for word in x.split() if word not in _stop_words.ENGLISH_STOP_WORDS])
+df_cleaned["message"] = df_cleaned["message"].apply(lambda x: [word for word in x.split() if word not in _stop_words.ENGLISH_STOP_WORDS])
 
 # Keep root word (Stemming/Lemmanization)
 stemmer = SnowballStemmer('english')
-df["message"] = df["message"].apply(lambda x: [stemmer.stem(word) for word in x])
+df_cleaned["message"] = df_cleaned["message"].apply(lambda x: [stemmer.stem(word) for word in x])
 
 # Convert message column back to string
-df["message"] = df["message"].apply(lambda x: ' '.join(x))
+df_cleaned["message"] = df_cleaned["message"].apply(lambda x: ' '.join(x))
 
 # Show first 5 rows of dataframe
-print(df.head())
+print(df_cleaned.head())
 
 # -------------------------------
 # 2. CONVERT TO HF DATASET
 # -------------------------------
-dataset = Dataset.from_pandas(df)
+dataset = Dataset.from_pandas(df_cleaned)
 
 # Train-test split
 dataset = dataset.train_test_split(test_size=0.2)
@@ -174,12 +183,12 @@ try:
         while os.path.exists(path_to_save):
             # Assuming model are saved to ./models/sms-spam-model-#
             version = int(path_to_save.split('-')[-1])
-            path_to_save = os.path.join("models","sms-spam-model-"+str(version+1))
+            path_to_save = os.path.join("models","sms-spam-model1-"+str(version+1))
             print(f"Checking path: {path_to_save}")
 
         return path_to_save
     
-    saved_model = check_save_path(model_path)
+    saved_model = check_save_path('models/sms-spam-model1-0')
     trainer.save_model(saved_model)
     tokenizer.save_pretrained(saved_model)
     print(f"Model saved to {saved_model}")
@@ -191,7 +200,6 @@ try:
         model=saved_model,
         tokenizer=tokenizer
     )
-
     # -------------------------------
     # 11. TEST EXAMPLES
     # -------------------------------
