@@ -27,7 +27,7 @@ import numpy as np
 import seaborn as sns
 
 #model_path = "./models/distilbert/distilbert-base-uncased"
-model_path = "./models/sms-spam-model-0"
+model_path = "./models/sms-spam-model-1"
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 model = AutoModelForSequenceClassification.from_pretrained(model_path)
 
@@ -198,7 +198,7 @@ try:
     # Plot confusion matrix on test set
     import matplotlib
     matplotlib.use("Agg")
-    predictions=trainer.predict(dataset['train'])    # Get predictions from trainer
+    predictions=trainer.predict(dataset['test'])    # Get predictions from trainer
 
     # Convert logits to predicted labels
     y_pred=np.argmax(predictions.predictions, axis=1)
@@ -210,7 +210,7 @@ try:
     plt.xlabel("Predicted")
     plt.ylabel("Actual")
     plt.title("Confusion Matrix")
-    plt.savefig("plots/cm-train.png")
+    plt.savefig("plots/cm-test-model-1.png")
 except Exception as e:
     print(e)
 """
