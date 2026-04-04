@@ -22,8 +22,8 @@ from datasets import Dataset
 from nltk.stem import SnowballStemmer
 from sklearn.feature_extraction import _stop_words
 
-#model_path = "./models/distilbert/distilbert-base-uncased"
-model_path = "./models/sms-spam-model-0"
+model_path = "./models/distilbert/distilbert-base-uncased"
+#model_path = "./models/sms-spam-model-0"
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 model = AutoModelForSequenceClassification.from_pretrained(model_path)
 
