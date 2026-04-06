@@ -27,7 +27,7 @@ import numpy as np
 import seaborn as sns
 
 #model_path = "./models/distilbert/distilbert-base-uncased"
-model_path = "./models/sms-spam-model-1"
+model_path = "models/sms-spam-models1-0"
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 model = AutoModelForSequenceClassification.from_pretrained(model_path)
 
@@ -210,7 +210,7 @@ try:
     plt.xlabel("Predicted")
     plt.ylabel("Actual")
     plt.title("Confusion Matrix")
-    plt.savefig("plots/cm-test-model-1.png")
+    plt.savefig("plots/cm-test-model1-0.png")
 except Exception as e:
     print(e)
 """
