@@ -1,6 +1,8 @@
-transformers
 torch
-pandas
+transformers
 datasets
+accelerate>=1.1.0
+pandas
+numpy
 scikit-learn
 nltk

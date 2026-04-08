@@ -1,207 +1,98 @@
-# 📱 AI-Powered Smishing Detection System
+# AI-Powered Smishing Detection
 
-## 🚀 Overview
+This repository contains a hybrid SMS phishing detection system built for a course project. It combines a fine-tuned DistilBERT classifier with rule-based URL and keyword analysis, then generates a short explanation for the user.
 
-This project is an **AI-based smishing (SMS phishing) detection system** that analyzes text messages and classifies them as:
+## What this version improves
 
-* ✅ **SAFE**
-* ⚠️ **SPAM (Smishing attack)**
+This merged version keeps the strongest parts from the team branches:
+- **Yugveer branch:** clean repo structure, training pipeline, local model loading
+- **Gustavo branch:** better training metrics and clearer label handling
+- **Rachna branch:** risk-score and end-user explanation idea
+- **Ashley contribution:** explanation module concept
 
-The system combines:
+## Project structure
 
-* 🤖 Machine Learning (DistilBERT)
-* 📏 Rule-based detection
-* 🧠 Explainable AI (text-based reasoning)
-
----
-
-## 🧩 How It Works
-
-The system follows a **hybrid detection pipeline**:
-
-1. **Preprocessing**
-
-   * Cleans text (lowercase, remove noise, stemming)
-
-2. **Machine Learning Model**
-
-   * Fine-tuned DistilBERT model trained on SMS spam dataset
-
-3. **Rule-Based System**
-
-   * Detects suspicious keywords (e.g., "urgent", "verify")
-   * Analyzes URLs and domain trust
-
-4. **Score Fusion**
-
-   * Final Score = `0.7 × ML Score + 0.3 × Rule Score`
-
-5. **Explanation Generator**
-
-   * Provides human-readable reasoning for the decision
-
----
-
-## 📂 Project Structure
-
-```
+```text
 ai-powered-smishing/
-│
 ├── data/
-│   └── spam.csv                # Dataset used for training
-│
+│   └── spam.csv
 ├── src/
-│   ├── train_model.py         # Train ML model
-│   ├── distilbert_model.py    # Prediction using trained model
-│   ├── preprocessing.py       # Text cleaning
-│   ├── pipeline.py            # Main detection pipeline
-│   └── llm_explainer.py       # Explanation generator
-│
+│   ├── distilbert_model.py
+│   ├── llm_explainer.py
+│   ├── pipeline.py
+│   ├── preprocessing.py
+│   └── train_model.py
 ├── requirements.txt
-├── README.md
-└── .gitignore
+├── .gitignore
+└── README.md
 ```
 
----
-
-## ⚙️ Installation
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/asun975/ai-powered-smishing.git
-cd ai-powered-smishing
-```
-
-### 2. Install dependencies
+## Setup
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Or manually:
-
-```bash
-pip install torch transformers datasets accelerate pandas scikit-learn nltk
-```
-
----
-
-## 🧠 Train the Model
-
-Run:
+## Train the model
 
 ```bash
 python src/train_model.py
 ```
 
-This will:
+This saves the trained model locally to `models/distilbert/`.
 
-* Load dataset from `data/spam.csv`
-* Train DistilBERT model
-* Save model locally in `models/distilbert`
-
-⚠️ Note: The trained model is not included in the repo (to keep it lightweight).
-
----
-
-## 🔍 Run the Detection System
+## Run the detector
 
 ```bash
 python src/pipeline.py
 ```
 
-### Example Output
+Example output:
 
-```json
+```python
 {
-  "text": "Your account is locked. Verify now!",
-  "ml_prediction": "SPAM",
-  "ml_score": 85.3,
-  "rule_score": 40,
-  "final_score": 71.2,
-  "prediction": "SPAM",
-  "explanation": "This message is likely a smishing attack..."
+    'text': 'Your instagram account is hacked. Verify now: https://www.instagram.ca',
+    'ml_prediction': 'SAFE',
+    'ml_confidence': 0.995,
+    'ml_score': 0.5,
+    'rule_score': 80,
+    'final_score': 32.3,
+    'prediction': 'SAFE',
+    'explanation': 'This message has multiple suspicious signals...'
 }
 ```
 
----
+## Why the hybrid approach helps
 
-## 🧪 Features
+A pure ML model can miss brand impersonation and suspicious link patterns. A pure rule-based system can overflag harmless messages. This repo combines both:
+- **ML score** from fine-tuned DistilBERT
+- **Rule score** from suspicious words, URLs, and domain mismatch checks
+- **Final prediction** from a weighted score
 
-### 🤖 Machine Learning
+## Current limitations
 
-* Fine-tuned DistilBERT for SMS classification
+- The dataset is relatively small.
+- Trusted-domain logic is intentionally simple for the demo.
+- The explanation module is template-based, not a full LLM.
 
-### 📏 Rule-Based Detection
+## Suggested future work
 
-* Keyword detection
-* URL/domain analysis
-* Trusted domain filtering
+- Add more smishing-specific training data
+- Replace the explanation module with a lightweight local LLM
+- Add a Streamlit or Flask frontend
+- Save evaluation reports and confusion matrix plots
 
-### ⚖️ Hybrid Scoring
+## Team
 
-* Combines ML and rule-based results for better accuracy
+- **Yugveer Sidhu**
+- Gustavo De Vera
+- Rachna
+- Ashley Sun
 
-### 🧠 Explainability
+## Notes for GitHub
 
-* Generates explanations to justify predictions
+The trained model is not committed to the repo because it is large. After cloning, train it locally with:
 
----
-
-## 🛠️ Technologies Used
-
-* Python
-* PyTorch
-* Hugging Face Transformers
-* Datasets
-* NLTK
-* Scikit-learn
-
----
-
-## ⚠️ Limitations
-
-* Small dataset may limit accuracy
-* Rule-based logic is basic
-* Explanation system is currently rule-based (not a full LLM yet)
-
----
-
-## 🔮 Future Improvements
-
-* Deploy as web app (Streamlit / Flask)
-* Integrate real LLM (TinyLlama / Gemma)
-* Improve phishing URL detection
-* Expand dataset for better performance
-* Real-time SMS filtering API
-
----
-
-## 👥 Team Contributions
-
-| Member        | Contribution                            |
-| ------------- | --------------------------------------- |
-|               |                                         |
-|               |                                         |
-|               |                                         |
-
-
-
----
-
-## 📌 Summary
-
-This project demonstrates a **hybrid AI approach** combining:
-
-* Deep learning
-* Rule-based logic
-* Explainability
-
-to build a practical **smishing detection system**.
-
----
-
-## 📜 License
-
-This project is for educational purposes.
+```bash
+python src/train_model.py
+```
