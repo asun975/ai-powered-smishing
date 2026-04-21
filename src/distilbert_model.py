@@ -1,13 +1,13 @@
-from pathlib import Path
 import torch
+from os import path
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-MODEL_PATH = BASE_DIR / "models" / "distilbert"
+# Local sms-spam model
+MODEL_PATH = path.join("..", "models", "sms-spam-model-0")
 
 
 def load_model():
-    if not MODEL_PATH.exists():
+    if not path.exists(MODEL_PATH):
         raise FileNotFoundError(
             f"Trained model not found at {MODEL_PATH}. Run: python src/train_model.py"
         )
