@@ -7,18 +7,17 @@ MODEL_PATH = path.join("..", "models", "sms-spam-model-0")
 
 
 def load_model():
-    if not path.exists(MODEL_PATH):
-        raise FileNotFoundError(
-            f"Trained model not found at {MODEL_PATH}. Run: python src/train_model.py"
+    if path.exists(MODEL_PATH):
+        tokenizer = AutoTokenizer.from_pretrained(str(MODEL_PATH), local_files_only=True)
+        model = AutoModelForSequenceClassification.from_pretrained(
+            str(MODEL_PATH),
+            local_files_only=True,
         )
+        model.eval()
+        return tokenizer, model
+    else:
+        print(f"Trained model not found at {MODEL_PATH}. Run: python src/train_model.py")
 
-    tokenizer = AutoTokenizer.from_pretrained(str(MODEL_PATH), local_files_only=True)
-    model = AutoModelForSequenceClassification.from_pretrained(
-        str(MODEL_PATH),
-        local_files_only=True,
-    )
-    model.eval()
-    return tokenizer, model
 
 
 tokenizer, model = load_model()
