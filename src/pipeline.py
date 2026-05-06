@@ -2,7 +2,7 @@ import re
 from urllib.parse import urlparse
 
 from distilbert_model import predict
-from llm_explainer import generate_explanation
+from tinyLlama_explainer import generate_reasoning
 
 # Known trusted domains for demo purposes.
 TRUSTED_DOMAINS = [
@@ -90,7 +90,7 @@ def analyze_sms(text: str) -> dict:
     final_score = (0.6 * ml_score) + (0.4 * rb_score)
     final_prediction = "SPAM" if final_score >= 35 else "SAFE"
 
-    explanation = generate_explanation(text, final_score)
+    explanation = generate_reasoning(message=text, risk_score=final_score, label=final_prediction)
 
     return {
         "text": text,
@@ -110,7 +110,9 @@ if __name__ == "__main__":
         "Hey, are we still meeting at 7 tonight?",
         "URGENT! Your bank account has been locked. Login now at http://secure-login.xyz",
     ]
-
-    for msg in examples:
+    print(analyze_sms(examples[0]))
+"""
+f   or msg in examples:
         print(analyze_sms(msg))
         print("-" * 80)
+"""
