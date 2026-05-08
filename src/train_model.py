@@ -10,7 +10,7 @@ from transformers import (
 # -------------------------------
 # 1. LOAD NEW DATASET (WITH URLs)
 # -------------------------------
-df = pd.read_csv("train_dataset.csv")
+df = pd.read_csv("data/train_dataset.csv")
 df = df.sample(n=5000, random_state=42)
 
 # Keep only message + label
