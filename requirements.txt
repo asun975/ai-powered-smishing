@@ -1,0 +1,4 @@
+pandas==3.0.2
+datasets==4.8.5
+transformers==5.8.0
+scikit-learn==1.8.0
