@@ -4,6 +4,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 import pandas as pd
 import torch
 from datasets import Dataset
+from os import path, getcwd
 from transformers import (
     AutoTokenizer,
     AutoModelForSequenceClassification,
@@ -16,7 +17,7 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 # -------------------------------
 # 1. LOAD DATA
 # -------------------------------
-df = pd.read_csv("spam.csv")
+df = pd.read_csv("data/spam.csv")
 
 # Rename columns if needed
 df.columns = ["label", "message"]
