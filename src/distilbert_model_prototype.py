@@ -14,6 +14,12 @@ from transformers import (
 )
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
+BASE_DIR = getcwd()
+MODEL_DIR = path.join(BASE_DIR, 'models', 'sms-spam-model')
+
+print('Current working directory: ', BASE_DIR)
+print('Results will be saved to: ', MODEL_DIR)
+
 # -------------------------------
 # 1. LOAD DATA
 # -------------------------------
@@ -87,14 +93,14 @@ def compute_metrics(eval_pred):
 # 6. TRAINING CONFIG
 # -------------------------------
 training_args = TrainingArguments(
-    output_dir="./results",
+    output_dir=path.join(MODEL_DIR, 'results'),
     learning_rate=2e-5,
     per_device_train_batch_size=16,
     per_device_eval_batch_size=16,
     num_train_epochs=3,
     eval_strategy="epoch",
     save_strategy="epoch",
-    logging_dir="./logs",
+    logging_dir=path.join(MODEL_DIR, 'logs'),
     load_best_model_at_end=True
 )
 
@@ -118,7 +124,7 @@ trainer.train()
 # -------------------------------
 # 9. SAVE MODEL
 # -------------------------------
-model_path = "./sms-spam-model"
+model_path = MODEL_DIR
 trainer.save_model(model_path)
 tokenizer.save_pretrained(model_path)
 
