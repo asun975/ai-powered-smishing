@@ -221,3 +221,6 @@ __marimo__/
 models/distilbert/
 models/distilbert/checkpoint-*/
 logs/
+
+# Dataset
+data/
