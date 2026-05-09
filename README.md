@@ -13,7 +13,7 @@ python src/train_model.py
 ```
 This trains a base DistilBERT model on the SMS Spam Collection dataset and saves the model locally to models/sms-spam-model/
 
-In addition, train_model.py provides training on URLs using a kaggle dataset for malicious URL detection.
+In addition, train_model.py provides training on URLs using a kaggle dataset for malicious URL detection. This model is saved to models/sms-spam-model-v2/
 ## Dataset
 Almeida, T. & Hidalgo, J. (2011). SMS Spam Collection [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5CC84.
 
