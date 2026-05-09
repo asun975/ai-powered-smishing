@@ -1,6 +1,5 @@
 import pandas as pd
 from datasets import Dataset
-from os import getcwd, path
 from transformers import (
     AutoTokenizer,
     AutoModelForSequenceClassification,
@@ -8,17 +7,10 @@ from transformers import (
     Trainer
 )
 
-BASE_DIR = getcwd()
-BASE_MODEL_DIR = path.join(BASE_DIR, 'models', 'sms-spam-model')
-NEW_MODEL_DIR = path.join(BASE_DIR, 'models', 'sms-spam-model-v2')
-
-print('Current working directory: ', BASE_DIR)
-print('Results will be saved to: ', NEW_MODEL_DIR)
-
 # -------------------------------
 # 1. LOAD NEW DATASET (WITH URLs)
 # -------------------------------
-df = pd.read_csv("data/train_dataset.csv")
+df = pd.read_csv("train_dataset.csv")
 df = df.sample(n=5000, random_state=42)
 
 # Keep only message + label
@@ -37,7 +29,7 @@ dataset = dataset.train_test_split(test_size=0.2)
 # -------------------------------
 # 3. LOAD EXISTING MODEL
 # -------------------------------
-model_path = BASE_MODEL_DIR
+model_path = "./sms-spam-model"
 
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 
@@ -65,11 +57,11 @@ dataset.set_format(
 # 5. TRAINING CONFIG
 # -------------------------------
 training_args = TrainingArguments(
-    output_dir=path.join(NEW_MODEL_DIR, 'results'),
+    output_dir="./sms_results_updated",
     per_device_train_batch_size=16,
     per_device_eval_batch_size=16,
     num_train_epochs=2,  # small = avoids overfitting
-    logging_dir=path.join(NEW_MODEL_DIR, 'logs')
+    logging_dir="./sms_logs_updated"
 )
 
 # -------------------------------
@@ -90,7 +82,7 @@ trainer.train()
 # -------------------------------
 # 8. SAVE UPDATED MODEL
 # -------------------------------
-updated_model_path = NEW_MODEL_DIR
+updated_model_path = "./sms-spam-model-v2"
 
 trainer.save_model(updated_model_path)
 tokenizer.save_pretrained(updated_model_path)
