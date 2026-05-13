@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">My Application</string>
+    <string name="phone_number">Phone Number</string>
+    <string name="text_message">Text Message</string>
+</resources>
