@@ -13,7 +13,3 @@
 .externalNativeBuild
 .cxx
 local.properties
-
-# Models
-*.onnx
-tokenizer.json
