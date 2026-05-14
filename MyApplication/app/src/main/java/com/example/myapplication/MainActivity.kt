@@ -30,13 +30,13 @@ class MainActivity : AppCompatActivity() {
 
         // Load model in background so app doesn't crash
         thread {
-            classifier = SmishingClassifier(this)
+            classifier = SmishingClassifier(applicationContext)
             runOnUiThread {
                 resultTextView.text = "✅ Model ready! Waiting for SMS..."
             }
         }
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
+        if (ActivityCompat.checkSelfPermission(applicationContext, Manifest.permission.RECEIVE_SMS)
             != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
                 arrayOf(Manifest.permission.RECEIVE_SMS), 111)
