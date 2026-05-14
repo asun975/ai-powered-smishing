@@ -14,7 +14,7 @@ import kotlinx.coroutines.*
 class MainActivity : AppCompatActivity() {
 
     // Place your API Key
-    private val apiKey = "AIzaSyAPBj13y91nEOuvRFCdP4XOxcpi154qfOw"
+    private val apiKey = "API KEY"
     private val analyzer = PhishingAnalyzer(apiKey)
 
     private val smsResultReceiver = object : BroadcastReceiver() {
