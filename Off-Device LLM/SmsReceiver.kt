@@ -23,7 +23,7 @@ class SmsReceiver : BroadcastReceiver() {
                         Log.d("SMS_RECEIVER", "From: $sender")
                         Log.d("SMS_RECEIVER", "Message: $messageBody")
 
-                        val apiKey = "AIzaSyAPBj13y91nEOuvRFCdP4XOxcpi154qfOw"
+                        val apiKey = "API KEY"
                         val analyzer = PhishingAnalyzer(apiKey)
                         val result = analyzer.analyzeMessage(messageBody)
 
