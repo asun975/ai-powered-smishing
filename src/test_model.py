@@ -1,8 +1,16 @@
+import os
 from transformers import pipeline
+
+model_path = os.path.join('.', 'models', 'sms-spam-model-v2')
+
+if not os.path.exists(model_path):
+        raise FileNotFoundError(
+            f"Trained model not found at {model_path}. Run: python src/distilbert_model_prototype.py and python src/train_model.py"
+        )
 
 classifier = pipeline(
     "text-classification",
-    model="./models/sms-spam-model-v2"
+    model=model_path
 )
 
 def predict(text):
