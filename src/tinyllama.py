@@ -22,14 +22,12 @@ print(result)
 label = result[0]['label']
 score = result[0]['score']
 
-# Use LABEL_0 for risk score
-"""
+
 if label == "LABEL_1":
     risk = score
 else:
     risk = 1 - score
-"""
-risk = score
+
 risk_percent = round(risk * 100)
 
 if risk_percent >= 70:
