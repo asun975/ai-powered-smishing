@@ -27,9 +27,3 @@ def predict(text):
 predict("URGENT! Your account has been compromised. Click here now!")
 predict("Hey, are we still meeting later?")
 predict("You won $1000! Claim your prize now!")
-
-while True:
-    msg = input("\nEnter SMS (or 'exit'): ")
-    if msg == "exit":
-        break
-    predict(msg)
