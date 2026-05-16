@@ -6,8 +6,11 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 tokenizer = AutoTokenizer.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
 model = AutoModelForCausalLM.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0", torch_dtype=torch.float16)
 
+# Load model from ./models/sms-spam-model-v2
+classifier = pipeline("text-classification", model="models/sms-spam-model-v2")
+
 # Load sample text classifier for smishing detection
-classifier = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
+# classifier = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
 
 # Test smishing message
 message = "URGENT: Your bank account has been locked. Verify now: http://secure-login.xyz"
@@ -16,7 +19,7 @@ message = "URGENT: Your bank account has been locked. Verify now: http://secure-
 result = classifier(message)
 
 # Show Risk score and model output
-print("bert-tiny-finetuned is ready!")
+print("sms-spam-model-v2 ready!")
 print(result)
 
 label = result[0]['label']
