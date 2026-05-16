@@ -2,20 +2,12 @@ import os
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
-# To use Transformers in an offline or firewalled environment requires the downloaded and cached files ahead of time. 
-tokenizer = AutoTokenizer.from_pretrained("models/TinyLlama/TinyLlama-1.1B-Chat-v1.0", local_files_only=True)
-model = AutoModelForCausalLM.from_pretrained("models/TinyLlama/TinyLlama-1.1B-Chat-v1.0", local_files_only=True, torch_dtype=torch.float16)
-classifier = pipeline(task="text-classification", model="models/mrm8488/bert-tiny-finetuned-sms-spam-detection")
-
 # Save tokenizer and model to local dir
-#tokenizer = AutoTokenizer.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
-#model = AutoModelForCausalLM.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0", torch_dtype=torch.float16)
+tokenizer = AutoTokenizer.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+model = AutoModelForCausalLM.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0", torch_dtype=torch.float16)
 
-#tokenizer.save_pretrained("models/TinyLlama/TinyLlama-1.1B-Chat-v1.0")
-#model.save_pretrained("models/TinyLlama/TinyLlama-1.1B-Chat-v1.0")
-
-#classifier = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
-#classifier.save_pretrained("models/mrm8488/bert-tiny-finetuned-sms-spam-detection")
+# Load sample text classifier for smishing detection
+classifier = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
 
 # Test smishing message
 message = "URGENT: Your bank account has been locked. Verify now: http://secure-login.xyz"
