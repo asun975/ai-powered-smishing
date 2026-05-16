@@ -16,10 +16,18 @@ cd ai-powered-smishing
 
 # Install dependencies
 pip install -r requirements.txt
+```
 
+This trains a base DistilBERT model on the SMS Spam Collection dataset and saves the model locally to models/sms-spam-model/
+
+In addition, train_model.py provides training on URLs using a kaggle dataset for malicious URL detection. This model is saved to models/sms-spam-model-v2/
+```bash
 # Train the model
 python src/distilbert_model_prototype.py
 python src/train_model.py
+
+# Test sms-spam-model-v2 with sample messages
+python src/test_model.py
 ```
 ## Features (in progress)
 
