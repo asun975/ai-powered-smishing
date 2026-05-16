@@ -1,5 +1,5 @@
 # AI-Powered Smishing Detection
-The objective of this project is an AI-powered smishing detection for android-based mobile devices. Our solution will identify smishing messages in real-time and present a risk score and explanation for the user.
+This project delivers an Android application capable of performing real‑time analysis of incoming SMS messages to detect potential smishing (SMS phishing) attempts. Incoming text is evaluated using a text classification API that assigns a dynamic risk score, and a Large Language Model (LLM) API generates clear, human‑readable explanations describing why the message was flagged. Based on the assessed risk level, the app can trigger alerts, quarantine suspicious messages, or allow the user to block the sender.
 ## Setup
 -  Requires Android Studio
 ```
@@ -21,7 +21,7 @@ https://www.kaggle.com/datasets/pilarpieiro/tabular-dataset-ready-for-malicious-
 ## Current project status
 - Trained intial model using pretrained distilbert model from hugging face
 - Completed initial testing for LLM reasoning using TinyLLama
-- Currently evaluating feasibilty of local models inference on mobile devices
+
 
 ## Features completed
 
@@ -33,6 +33,6 @@ https://www.kaggle.com/datasets/pilarpieiro/tabular-dataset-ready-for-malicious-
 ## Known issues or limitations
 - Model bias due to limited or outdated dataset for mobile smishing and URL detection
 - False positive/negatives and LLM hallucination
-- On-device performance for model inference
 - Mobile resource contraints like battery, storage, and CPU/GPU memory
+- Android limitations for non-default apps to delete or block messages.
 ## Relevant Links
