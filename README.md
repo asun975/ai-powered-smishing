@@ -5,7 +5,7 @@ Our project is an Android application capable of performing real‑time analysis
 ## Usage
 The initial prototype focuses on individual modules only and does not represent a complete end‑to‑end use case. 
 - Implemented broadcast receiver to read incoming messages using an emulator
-- Trained a pretrained distilbert model from hugging face
+- Classifier (DistilBERT) model trained in message text and URL that classifies SMS text as smishing or benign and assigns a risk score
 - LLM (TinyLlama) provides a human-readable explanation of a sample message and risk score
 
 ### Set-up Project
