@@ -29,7 +29,7 @@ python src/train_model.py
 - 🛡️ **Quarantine simulation** for high‑risk messages  
 - 🚫 **Blocking simulation** (UI‑level only; no OS‑level blocking)  
 - 🔔 **User alerts** for suspicious content  
-- 🔒 **Data‑cleaning module** (PII masking, token‑limit enforcement)
+- 🔒 **Data‑cleaning module** (remove sensitive data and PII)
 
 ## Architecture Overview
 
@@ -45,6 +45,7 @@ python src/train_model.py
 │   └── activity_main.xml
 ├── src/
 │   ├── distilbert_model_prototype.py
+│   ├── tinyllama.py
 │   └── train_model.py
 ├── .gitignore
 ├── README.md
