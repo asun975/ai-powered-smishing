@@ -18,9 +18,6 @@ cd ai-powered-smishing
 pip install -r requirements.txt
 ```
 
-This trains a base DistilBERT model on the SMS Spam Collection dataset and saves the model locally to models/sms-spam-model/
-
-In addition, train_model.py provides training on URLs using a kaggle dataset for malicious URL detection. This model is saved to models/sms-spam-model-v2/
 ```bash
 # Train the DistilBERT model
 python src/distilbert_model_prototype.py
@@ -32,6 +29,10 @@ python src/test_model.py
 # Generate explanation for assigned risk score with Tiny Llama
 python src/tinyllama.py
 ```
+This trains a base DistilBERT model on the SMS Spam Collection dataset and saves the model locally to models/sms-spam-model/
+
+train_model.py provides additional training on URLs using a kaggle dataset for malicious URL detection. This model is saved to models/sms-spam-model-v2/
+
 ## Features (in progress)
 
 - 🔍 **Real‑time SMS scanning**  
@@ -67,7 +68,7 @@ python src/tinyllama.py
 - Mobile resource contraints like battery, storage, and CPU/GPU memory
 - Android limitations on non-default apps ability to delete and block messages.
 
-## Acknowledgements and Relevant Links
+## Relevant Links
 ### Dataset
 Almeida, T. & Hidalgo, J. (2011). SMS Spam Collection [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5CC84.
 
