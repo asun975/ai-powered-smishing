@@ -2,7 +2,7 @@ from transformers import pipeline
 
 classifier = pipeline(
     "text-classification",
-    model="./sms-spam-model"
+    model="./models/sms-spam-model-v2"
 )
 
 def predict(text):
