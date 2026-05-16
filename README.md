@@ -1,12 +1,12 @@
 # AI-Powered Smishing Detection
 
-Our project is an Android application capable of performing real‑time analysis of incoming SMS messages to detect potential smishing (SMS phishing) attempts. Incoming text is evaluated using a text classification API that assigns a dynamic risk score and q Large Language Model (LLM) API generates clear, human‑readable explanations describing why the message was flagged. Based on the assessed risk level, the app can trigger alerts, quarantine suspicious messages, or allow the user to block the sender.
+Our project is an Android application capable of performing real‑time analysis of incoming SMS messages to detect potential smishing (SMS phishing) attempts. Incoming SMS messages are evaluated using a text classification API that assigns a dynamic risk score, and a Large Language Model (LLM) API will generate clear, human‑readable explanations describing why the message was flagged. Based on the assessed risk level, the app can trigger alerts, quarantine suspicious messages, or allow the user to block the sender.
 
 ## Usage
 The initial prototype focuses on individual modules only and does not represent a complete end‑to‑end use case. 
 - Implemented broadcast receiver to read incoming messages using an emulator
 - Trained a pretrained distilbert model from hugging face
-- LLM (TinyLlama) provides a human readable explanation of a sample message and risk score
+- LLM (TinyLlama) provides a human-readable explanation of a sample message and risk score
 
 ### Set-up Project
 
@@ -53,7 +53,7 @@ python src/train_model.py
 - Model bias due to limited or outdated dataset for mobile smishing and URL detection
 - False positive/negatives and LLM hallucination
 - Mobile resource contraints like battery, storage, and CPU/GPU memory
-- Android limitations for non-default apps to delete or block messages.
+- Android limitations on non-default apps ability to delete and block messages.
 
 ## Acknowledgements
 ### Dataset
