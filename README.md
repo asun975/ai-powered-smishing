@@ -28,7 +28,7 @@ https://www.kaggle.com/datasets/pilarpieiro/tabular-dataset-ready-for-malicious-
 
 ## Features still in progress
 - Risk score and confidence level 
-- User feeback module using a LLM and chain of thought reasoning
+- User feedback module using a LLM and chain of thought reasoning
 - App features: notify, quarantine, blocking message
 ## Known issues or limitations
 - Model bias due to limited or outdated dataset for mobile smishing and URL detection
