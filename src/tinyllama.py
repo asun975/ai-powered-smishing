@@ -2,12 +2,22 @@ import os
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
-# Save tokenizer and model to local dir
+model_path = os.path.join('.', 'models', 'sms-spam-model-v2')
+
+if not os.path.exists(model_path):
+        raise FileNotFoundError(
+            f"Trained model not found at {model_path}. Run: python src/distilbert_model_prototype.py and python src/train_model.py"
+        )
+
+# Load model from ./models/sms-spam-model-v2
+classifier = pipeline("text-classification", model=model_path)
+
+# Load tiny llama model and tokenizer from hugging face
 tokenizer = AutoTokenizer.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
 model = AutoModelForCausalLM.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0", torch_dtype=torch.float16)
 
 # Load sample text classifier for smishing detection
-classifier = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
+# classifier = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
 
 # Test smishing message
 message = "URGENT: Your bank account has been locked. Verify now: http://secure-login.xyz"
@@ -16,7 +26,7 @@ message = "URGENT: Your bank account has been locked. Verify now: http://secure-
 result = classifier(message)
 
 # Show Risk score and model output
-print("bert-tiny-finetuned is ready!")
+print("sms-spam-model-v2 ready!")
 print(result)
 
 label = result[0]['label']
