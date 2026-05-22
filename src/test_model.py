@@ -15,24 +15,25 @@ from transformers import (
     AutoModelForSequenceClassification
 )
 
+N_SIZE=10
 BATCH_SIZE=32
 MAX_LENGTH=128
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+MODEL_NAME = 'models/sms-spam-model-v2'
 
 def load_model():
-    model_path = os.path.join('.', 'models', 'sms-spam-model-v2')
 
-    if not os.path.exists(model_path):
+    if not os.path.exists(MODEL_NAME):
             raise FileNotFoundError(
-                f"Trained model not found at {model_path}. Run: python src/distilbert_model_prototype.py and python src/train_model.py"
+                f"Trained model not found at {MODEL_NAME}. Run: python src/distilbert_model_prototype.py and python src/train_model.py"
             )
-    tokenizer = AutoTokenizer.from_pretrained(model=model_path, local_files_only=True)
-    model = AutoModelForSequenceClassification.from_pretrained(model=model_path, local_files_only=True)
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, local_files_only=True)
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, local_files_only=True)
 
     model.to(DEVICE)
     model.eval()
 
-    return model, tokenizer, model_path
+    return model, tokenizer
 
 def load_dataset():
     dataset_name = os.path.join('data', 'kaggle_malicious_url_dataset', 'test_dataset.csv')
@@ -78,7 +79,7 @@ def main():
         #predict("Hey, are we still meeting later?")
         #predict("You won $1000! Claim your prize now!")
 
-        model, tokenizer, model_path = load_model()
+        model, tokenizer = load_model()
 
         dataset = load_dataset()
         labels = dataset['label']
@@ -207,4 +208,98 @@ def main():
             print_exception(e, limit=2, file=sys.stdout)
 
 if __name__ == "__main__":
-    main()
+    try:
+        # Load model and tokenizer
+        if not os.path.exists(MODEL_NAME):
+            raise FileNotFoundError(
+                f"Trained model not found at {MODEL_NAME}. Run: python src/distilbert_model_prototype.py and python src/train_model.py"
+            )
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, local_files_only=True)
+        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, local_files_only=True)
+
+        model.to(DEVICE)
+        model.eval()
+        
+        # HF text-classification
+        classifier = pipeline(
+            "text-classification",
+            model=model,
+            tokenizer=tokenizer
+        )
+
+        # Load dataset
+        dataset_name = os.path.join('data', 'kaggle_malicious_url_dataset', 'test_dataset.csv')
+
+        print("Loading dataset...")
+
+        # Create dataframe of 2000 random samples
+        df = pd.read_csv(dataset_name)
+        df = df.sample(n=N_SIZE, random_state=42)
+        df = df[['url', 'label']]
+        df = df.dropna() # Drop rows with null
+
+        # Convert to Hugging Face dataset
+        dataset = Dataset.from_pandas(df)
+        
+        # Tokenize features
+        dataset = dataset.map(
+            lambda examples: tokenizer(
+                examples["url"], 
+                truncation=True,
+                padding="max_length",
+                max_length=MAX_LENGTH,
+                return_tensors="pt")
+            )
+        # Split dataset into batches
+        BATCH_SIZE=10 # debug
+        urls = dataset['url']
+        num_batches = int(np.ceil(len(urls) / BATCH_SIZE))
+
+        # Debugging
+        print("Testing model ", model)
+        print("First row of tokenized data:\n", dataset[0])
+        print("# of URLs: ", len(dataset))
+        print("# of Batches: ", num_batches)
+
+        # Test loop
+        all_preds=[]
+        print("Running inference benchmark...")
+
+        # Measure inference time
+        start_total = time.time()
+        if DEVICE=="cuda":
+            torch.cuda.reset_peak_memory_stats()
+        
+        for i in tqdm(range(num_batches)):
+
+            start_idx = i * BATCH_SIZE
+            end_idx = min((i + 1) * BATCH_SIZE, len(dataset))
+
+            # Measure inference time
+            start_time = time.time()
+
+            #preds=classifier(dataset[start_idx:end_idx])
+            print(urls[start_idx:end_idx])
+
+            if DEVICE == "cuda":
+                torch.cuda.synchronize()
+
+            end_time = time.time()
+            #all_preds.append(preds)
+            batch_time = end_time - start_time
+
+            print(
+                f"Batch {i+1}/{num_batches} "
+                f"| Batch Size: {end_idx - start_idx} "
+                f"| Time: {batch_time:.4f}s"
+            )
+
+        end_total = time.time()
+
+        # Debugging
+        print(all_preds[0])
+    
+    except Exception as e:
+            print(f"An unexpected exception occured of type {type(e)}")
+            print("*** print_exception:")
+            print_exception(e, limit=2, file=sys.stdout)
