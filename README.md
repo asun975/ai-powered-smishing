@@ -74,9 +74,10 @@ Almeida, T. & Hidalgo, J. (2011). SMS Spam Collection [Dataset]. UCI Machine Lea
 
 https://www.kaggle.com/datasets/pilarpieiro/tabular-dataset-ready-for-malicious-url-detection4
 
-Test set
-https://www.kaggle.com/datasets/galactus007/sms-smishing-collection-data-set
-https://data.mendeley.com/datasets/f45bkkt8pr/1
+**Test dataset sourced from**
+
+- https://www.kaggle.com/datasets/galactus007/sms-smishing-collection-data-set
+- https://data.mendeley.com/datasets/f45bkkt8pr/1
 
 ### DistilBERT transformer model
 - [DistilBERT docs](https://huggingface.co/docs/transformers/en/model_doc/distilbert?usage=Pipeline#transformers.DistilBertModel)
