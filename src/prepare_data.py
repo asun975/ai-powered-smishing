@@ -1,22 +1,64 @@
 import pandas as pd
+import re
+
+"""
+Download and unzip datasets to data/
+Mendeley dataset: https://data.mendeley.com/datasets/f45bkkt8pr/1
+
+To download Kaggle dataset:
+
+import kagglehub
+
+# Download latest version
+path = kagglehub.dataset_download("galactus007/sms-smishing-collection-data-set")
+
+print("Path to dataset files:", path)
+"""
 
 def print_info(df):
-    print(f"Total samples {df.shape}")
-    print(f"Nbr of benign samples: {len(df[df['LABEL']=='ham'])}")
+    print(f"Total samples {df.shape[0]}")
+    print(f"Nbr of benign samples: {len(df[df['label']=='ham'])}")
+    print(f"Types of smishing texts: {df['label'].unique()}\n")
 
-df1=pd.read_csv("data/smssmishcollection/SMSSmishCollection.txt", sep="\t", header=None, names=['LABEL', 'TEXT'])
-df2 = pd.read_csv('data/SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION/Dataset_5971.csv')
-df2 = df2[['LABEL', 'TEXT']]
+if __name__ == "__main__":
+    kaggle_df = pd.read_csv("data/smssmishcollection/SMSSmishCollection.txt", sep="\t", header=None, names=['label', 'text'])
 
-df = pd.concat([df1, df2])
-print(df.shape)
-df.drop_duplicates()
-print_info(df)
+    mendeley_df = pd.read_csv('data/SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION/Dataset_5971.csv')
+    mendeley_df= mendeley_df.iloc[:, :2]
+    mendeley_df.columns = mendeley_df.columns.str.lower()
 
-# Remove duplicates found in training dataset 
-train_df = pd.read_csv('data/spam.csv', names=['LABEL', 'TEXT'])
-df = pd.concat([df, train_df]).drop_duplicates(keep=False)
-print_info(df)
+    df = pd.concat([kaggle_df, mendeley_df])
 
-# Save test dataset
-df.to_csv('data/SMSSmish_test.csv', index=False)
+    # Drop duplicate entries in text column and nan
+    df.drop_duplicates(subset=["text"], inplace=True)
+    df.dropna(inplace=True)
+
+    # Normalize label types
+    smish_labels = df[df['label']!='ham'].loc[:]['label'].unique()
+    df['label'] = df['label'].replace(smish_labels, 'smishing')
+
+    # Remove duplicated rows in training data
+    train_df = pd.read_csv('data/spam.csv')
+    train_df.columns = ['label', 'text']
+
+    # Keep only rows in df that are NOT in train_df
+    df_result = df.merge(train_df, how='left', indicator=True)
+    df_result = df_result[df_result['_merge'] == 'left_only'].drop('_merge', axis=1)
+
+    # Show dataframe info
+    print("Showing info for kaggle dataset")
+    print_info(kaggle_df)
+    print("Showing info for mendeley dataset")
+    print_info(mendeley_df)
+    print("-" * 20)
+    print("Compiled data")
+    print_info(df)
+    print("remove duplicates from training set")
+    print_info(df_result)
+
+    # Save test dataset
+    df_result.to_csv('data/test_samples.csv', index=False)
+
+    # Load test data
+    test_df = pd.read_csv('data/test_samples.csv')
+    print(test_df.head())
