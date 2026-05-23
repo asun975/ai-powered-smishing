@@ -1,5 +1,5 @@
 import pandas as pd
-import re
+from os import path
 
 """
 Download and unzip datasets to data/
@@ -14,6 +14,8 @@ path = kagglehub.dataset_download("galactus007/sms-smishing-collection-data-set"
 
 print("Path to dataset files:", path)
 """
+KAGGLE_DATA = "data/smssmishcollection/SMSSmishCollection.txt"
+MENDELEY_DATA = "data/SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION/Dataset_5971.csv"
 
 def print_info(df):
     print(f"Total samples {df.shape[0]}")
@@ -21,9 +23,26 @@ def print_info(df):
     print(f"Types of smishing texts: {df['label'].unique()}\n")
 
 if __name__ == "__main__":
-    kaggle_df = pd.read_csv("data/smssmishcollection/SMSSmishCollection.txt", sep="\t", header=None, names=['label', 'text'])
+    if not path.exists(KAGGLE_DATA):
+            raise FileNotFoundError(
+                f"""Dataset not found at {KAGGLE_DATA}. Run:
+                import kagglehub
 
-    mendeley_df = pd.read_csv('data/SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION/Dataset_5971.csv')
+                # Download latest version
+                path = kagglehub.dataset_download("galactus007/sms-smishing-collection-data-set")
+
+                print("Path to dataset files:", path)
+                """
+            )
+    
+    if not path.exists(MENDELEY_DATA):
+            raise FileNotFoundError(
+                f"Dataset not found at {MENDELEY_DATA}.\nDownload: https://data.mendeley.com/datasets/f45bkkt8pr/1"
+            )
+    
+    kaggle_df = pd.read_csv(KAGGLE_DATA, sep="\t", header=None, names=['label', 'text'])
+
+    mendeley_df = pd.read_csv(MENDELEY_DATA)
     mendeley_df= mendeley_df.iloc[:, :2]
     mendeley_df.columns = mendeley_df.columns.str.lower()
 
