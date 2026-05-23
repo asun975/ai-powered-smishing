@@ -15,7 +15,7 @@ from transformers import (
     AutoModelForSequenceClassification
 )
 
-N_SIZE=10
+N_SIZE=2000
 BATCH_SIZE=32
 MAX_LENGTH=128
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -35,15 +35,15 @@ def load_model():
 
     return model, tokenizer
 
-def load_dataset():
+def load_dataset(sample_size):
+    # Load dataset
     dataset_name = os.path.join('data', 'kaggle_malicious_url_dataset', 'test_dataset.csv')
-    test_size=2000
 
     print("Loading dataset...")
 
-    # Create dataframe of 2000 random samples
+    # Create dataframe of n random samples
     df = pd.read_csv(dataset_name)
-    df = df.sample(n=test_size, random_state=42)
+    df = df.sample(n=sample_size, random_state=42)
     df = df[['url', 'label']]
     df = df.dropna() # Drop rows with null
 
@@ -52,135 +52,90 @@ def load_dataset():
     
     return dataset
 
-def predict(text):
-    classifier = load_model()
-
-    result = classifier(text)[0]
-
-    label_map = {
-        "LABEL_0": "SAFE",
-        "LABEL_1": "SPAM"
-    }
-
-    label = label_map[result["label"]]
-    score = result["score"]
-
-    risk_score = score * 100 if label == "SPAM" else (1 - score) * 100
-
-    print(f"\nMessage: {text}")
-    print(f"Prediction: {label}")
-    print(f"Confidence: {score:.4f}")
-    print(f"Risk Score: {risk_score:.2f}")
-
 def main():
     try:
-        # Test examples
-        #predict("URGENT! Your account has been compromised. Click here now!")
-        #predict("Hey, are we still meeting later?")
-        #predict("You won $1000! Claim your prize now!")
-
+        # Load model and tokenizer
         model, tokenizer = load_model()
+        
+        # HF text-classification
+        classifier = pipeline("text-classification", device=DEVICE, model=model, tokenizer=tokenizer)
 
-        dataset = load_dataset()
-        labels = dataset['label']
+        # Load dataset
+        dataset = load_dataset(N_SIZE)
+        
+        # Tokenize features
+        dataset = dataset.map(
+            lambda examples: tokenizer(
+                examples["url"], 
+                truncation=True,
+                padding="max_length",
+                max_length=MAX_LENGTH,
+                return_tensors="pt")
+            )
+        
+        batched_dataset = dataset.batch(batch_size=BATCH_SIZE)
 
-        classifier = pipeline(
-            "text-classification",
-            model=model,
-            tokenizer=tokenizer
-        )
-
-        # Tokenize data
         urls = dataset['url']
-        encodings = tokenizer(
-            urls,
-            truncation=True,
-            padding="max_length",
-            max_length=MAX_LENGTH,
-            return_tensors="pt"
-        )
-    
-        input_ids = encodings["input_ids"]
-        attention_mask = encodings["attention_mask"]
-
-        # Batch evaluation
+        labels = dataset['label']
+        all_results = []
         all_preds = []
-        num_batches = int(np.ceil(len(urls) / BATCH_SIZE))
-        print("Running inference benchmark...")
 
         # Measure inference time
+        print("Running inference benchmark...")
         start_total = time.time()
 
-        # what is this?
-        if DEVICE=="cuda":
-            torch.cuda.reset_peak_memory_stats()
-        
-        for i in tqdm(range(num_batches)):
+        for batch in batched_dataset:
 
-            start_idx = i * BATCH_SIZE
-            end_idx = min((i + 1) * BATCH_SIZE, len(urls))
-
-            batch_input_ids = input_ids[start_idx:end_idx].to(DEVICE)
-            batch_attention = attention_mask[start_idx:end_idx].to(DEVICE)
-
-            # Measure inference time
             start_time = time.time()
+            if DEVICE=="cuda":
+                torch.cuda.reset_peak_memory_stats()
 
-            with torch.no_grad():
-                outputs = model(
-                    input_ids=batch_input_ids,
-                    attention_mask=batch_attention
-                )
+            for text in batch['url']:
+                result = classifier(text)[0]
+                label = {"LABEL_0": 0, "LABEL_1": 1}[result["label"]]
+                score = result["score"]
+                risk_score = score * 100 if label == "SPAM" else (1 - score) * 100
+                results_dict = {
+                    'message': text,
+                    'pred': label,
+                    'confidence':score,
+                    'risk_score': risk_score
+                }
+                all_preds.append(label)
 
             if DEVICE == "cuda":
-                torch.cuda.synchronize()
+                    torch.cuda.synchronize()
 
-            end_time = time.time()
+            end_time = time.time() 
 
-            logits = outputs.logits
-            predictions = torch.argmax(logits, dim=-1)
-
-            all_preds.extend(predictions.cpu().numpy())
-
+            all_results.append(results_dict)
             batch_time = end_time - start_time
 
             print(
-                f"Batch {i+1}/{num_batches} "
-                f"| Batch Size: {end_idx - start_idx} "
+                f"| Batch Size: {len(batch['url'])} "
                 f"| Time: {batch_time:.4f}s"
             )
 
         end_total = time.time()
 
-        # =========================================================
-        # METRICS
-        # =========================================================
-
+        # Metrics
         accuracy = accuracy_score(labels, all_preds)
         f1 = f1_score(labels, all_preds)
-
         total_time = end_total - start_total
         samples_per_second = len(urls) / total_time
 
-        # =========================================================
-        # MEMORY USAGE
-        # =========================================================
-
+        # Device memory
         if DEVICE == "cuda":
             peak_memory = torch.cuda.max_memory_allocated() / 1024**2
         else:
             peak_memory = None
-
-
-        # =========================================================
-        # RESULTS
-        # =========================================================
-
+        
+        # Results
         print("\n" + "=" * 60)
         print("BENCHMARK RESULTS")
         print("=" * 60)
 
-        print(f"Model:                {model_path}")
+        print(f"Model:                {MODEL_NAME}")
         print(f"Device:               {DEVICE}")
         print(f"Dataset Size:         {len(urls)}")
         print(f"Batch Size:           {BATCH_SIZE}")
@@ -202,104 +157,11 @@ def main():
             print(f"Peak GPU Memory:      {peak_memory:.2f} MB")
 
         print("=" * 60)
+    
     except Exception as e:
             print(f"An unexpected exception occured of type {type(e)}")
             print("*** print_exception:")
             print_exception(e, limit=2, file=sys.stdout)
 
 if __name__ == "__main__":
-    try:
-        # Load model and tokenizer
-        if not os.path.exists(MODEL_NAME):
-            raise FileNotFoundError(
-                f"Trained model not found at {MODEL_NAME}. Run: python src/distilbert_model_prototype.py and python src/train_model.py"
-            )
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, local_files_only=True)
-        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, local_files_only=True)
-
-        model.to(DEVICE)
-        model.eval()
-        
-        # HF text-classification
-        classifier = pipeline(
-            "text-classification",
-            model=model,
-            tokenizer=tokenizer
-        )
-
-        # Load dataset
-        dataset_name = os.path.join('data', 'kaggle_malicious_url_dataset', 'test_dataset.csv')
-
-        print("Loading dataset...")
-
-        # Create dataframe of 2000 random samples
-        df = pd.read_csv(dataset_name)
-        df = df.sample(n=N_SIZE, random_state=42)
-        df = df[['url', 'label']]
-        df = df.dropna() # Drop rows with null
-
-        # Convert to Hugging Face dataset
-        dataset = Dataset.from_pandas(df)
-        
-        # Tokenize features
-        dataset = dataset.map(
-            lambda examples: tokenizer(
-                examples["url"], 
-                truncation=True,
-                padding="max_length",
-                max_length=MAX_LENGTH,
-                return_tensors="pt")
-            )
-        # Split dataset into batches
-        BATCH_SIZE=10 # debug
-        urls = dataset['url']
-        num_batches = int(np.ceil(len(urls) / BATCH_SIZE))
-
-        # Debugging
-        print("Testing model ", model)
-        print("First row of tokenized data:\n", dataset[0])
-        print("# of URLs: ", len(dataset))
-        print("# of Batches: ", num_batches)
-
-        # Test loop
-        all_preds=[]
-        print("Running inference benchmark...")
-
-        # Measure inference time
-        start_total = time.time()
-        if DEVICE=="cuda":
-            torch.cuda.reset_peak_memory_stats()
-        
-        for i in tqdm(range(num_batches)):
-
-            start_idx = i * BATCH_SIZE
-            end_idx = min((i + 1) * BATCH_SIZE, len(dataset))
-
-            # Measure inference time
-            start_time = time.time()
-
-            #preds=classifier(dataset[start_idx:end_idx])
-            print(urls[start_idx:end_idx])
-
-            if DEVICE == "cuda":
-                torch.cuda.synchronize()
-
-            end_time = time.time()
-            #all_preds.append(preds)
-            batch_time = end_time - start_time
-
-            print(
-                f"Batch {i+1}/{num_batches} "
-                f"| Batch Size: {end_idx - start_idx} "
-                f"| Time: {batch_time:.4f}s"
-            )
-
-        end_total = time.time()
-
-        # Debugging
-        print(all_preds[0])
-    
-    except Exception as e:
-            print(f"An unexpected exception occured of type {type(e)}")
-            print("*** print_exception:")
-            print_exception(e, limit=2, file=sys.stdout)
+    main()
