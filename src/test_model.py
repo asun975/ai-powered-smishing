@@ -15,11 +15,12 @@ from transformers import (
     AutoModelForSequenceClassification
 )
 
-N_SIZE=2000
+N_SIZE=1000
 BATCH_SIZE=32
 MAX_LENGTH=128
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 MODEL_NAME = 'models/sms-spam-model-v2'
+DATASET_PATH = 'data/test_samples.csv'
 
 def load_model():
 
@@ -35,17 +36,19 @@ def load_model():
 
     return model, tokenizer
 
-def load_dataset(sample_size):
-    # Load dataset
-    dataset_name = os.path.join('data', 'kaggle_malicious_url_dataset', 'test_dataset.csv')
-
+def load_dataset(data, sample_size):
+    
     print("Loading dataset...")
+    if not os.path.exists(DATASET_PATH):
+            raise FileNotFoundError(
+                f"Test samples not found at {DATASET_PATH}. Run: python src/prepare_data.py"
+            )
 
     # Create dataframe of n random samples
-    df = pd.read_csv(dataset_name)
+    df = pd.read_csv(data)
     df = df.sample(n=sample_size, random_state=42)
-    df = df[['url', 'label']]
-    df = df.dropna() # Drop rows with null
+    # Convert labels to numeric
+    df["label"] = df["label"].map({"ham": 0, "smishing": 1})
 
     # Convert to Hugging Face dataset
     dataset = Dataset.from_pandas(df)
@@ -61,12 +64,12 @@ def main():
         classifier = pipeline("text-classification", device=DEVICE, model=model, tokenizer=tokenizer)
 
         # Load dataset
-        dataset = load_dataset(N_SIZE)
+        dataset = load_dataset(DATASET_PATH, N_SIZE)
         
         # Tokenize features
         dataset = dataset.map(
             lambda examples: tokenizer(
-                examples["url"], 
+                examples["text"], 
                 truncation=True,
                 padding="max_length",
                 max_length=MAX_LENGTH,
@@ -75,7 +78,7 @@ def main():
         
         batched_dataset = dataset.batch(batch_size=BATCH_SIZE)
 
-        urls = dataset['url']
+        texts = dataset['text']
         labels = dataset['label']
         all_results = []
         all_preds = []
@@ -90,7 +93,7 @@ def main():
             if DEVICE=="cuda":
                 torch.cuda.reset_peak_memory_stats()
 
-            for text in batch['url']:
+            for text in batch['text']:
                 result = classifier(text)[0]
                 label = {"LABEL_0": 0, "LABEL_1": 1}[result["label"]]
                 score = result["score"]
@@ -112,7 +115,7 @@ def main():
             batch_time = end_time - start_time
 
             print(
-                f"| Batch Size: {len(batch['url'])} "
+                f"| Batch Size: {len(batch['text'])} "
                 f"| Time: {batch_time:.4f}s"
             )
 
@@ -122,7 +125,7 @@ def main():
         accuracy = accuracy_score(labels, all_preds)
         f1 = f1_score(labels, all_preds)
         total_time = end_total - start_total
-        samples_per_second = len(urls) / total_time
+        samples_per_second = len(texts) / total_time
 
         # Device memory
         if DEVICE == "cuda":
@@ -137,7 +140,7 @@ def main():
 
         print(f"Model:                {MODEL_NAME}")
         print(f"Device:               {DEVICE}")
-        print(f"Dataset Size:         {len(urls)}")
+        print(f"Dataset Size:         {len(texts)}")
         print(f"Batch Size:           {BATCH_SIZE}")
         print(f"Max Sequence Length:  {MAX_LENGTH}")
 
