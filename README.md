@@ -62,6 +62,39 @@ Example output:
 }
 ```
 
+## Data Cleaning & Preprocessing (Week 3 — Yugveer)
+
+Before any message reaches the ML model or LLM explainer, it goes through a preprocessing pipeline in `src/preprocessing.py`.
+
+### What gets filtered out
+
+| Type | Example | Result |
+|---|---|---|
+| Empty message | `""` | Skipped — `media_only` |
+| Photo / MMS | `[Image]`, `[Video]` | Skipped — `media_only` |
+| Trivial message | `"ok"`, `"yes thanks"`, `"hey"` | Skipped — `trivial` |
+
+### What gets masked (PII stripping)
+
+Sensitive information is replaced with labeled placeholders before being sent to any model, so no personal data leaks through.
+
+| PII type | Example input | Output |
+|---|---|---|
+| Phone number | `Call 416-555-1234` | `Call [PHONE]` |
+| Email address | `email@phish.com` | `[EMAIL]` |
+| Credit/debit card | `4111 1111 1111 1111` | `[CARD]` |
+| SIN / SSN | `123 456 789` | `[ID]` |
+
+### How to verify it yourself
+
+Run the full pipeline:
+
+```bash
+python src/pipeline.py
+```
+
+You can type any SMS at the interactive prompt and see how it is cleaned before scoring. Smishing messages still get detected because keywords and URLs are preserved — only personal data is masked.
+
 ## Why the hybrid approach helps
 
 A pure ML model can miss brand impersonation and suspicious link patterns. A pure rule-based system can overflag harmless messages. This repo combines both:

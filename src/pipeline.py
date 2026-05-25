@@ -3,6 +3,7 @@ from urllib.parse import urlparse
 
 from distilbert_model import predict
 from llm_explainer import generate_explanation
+from preprocessing import clean_for_distilbert, clean_for_llm, should_skip
 
 # Known trusted domains for demo purposes.
 TRUSTED_DOMAINS = [
@@ -81,19 +82,32 @@ def rule_based_score(text: str) -> int:
 
 
 def analyze_sms(text: str) -> dict:
-    # Use raw text for DistilBERT; transformers generally perform better this way.
-    result = predict(text)
+    skip, reason = should_skip(text)
+    if skip:
+        return {
+            "text": text,
+            "skipped": True,
+            "skip_reason": reason,
+            "prediction": "SAFE",
+            "explanation": "Message skipped: no analyzable text content.",
+        }
+
+    # Strip PII before model inference; transformers prefer natural text otherwise.
+    distilbert_input = clean_for_distilbert(text)
+    result = predict(distilbert_input)
     ml_score = result["risk_score"]
     rb_score = rule_based_score(text)
 
-    # Slightly stronger rule weighting for obvious phishing clues.
     final_score = (0.6 * ml_score) + (0.4 * rb_score)
     final_prediction = "SPAM" if final_score >= 35 else "SAFE"
 
-    explanation = generate_explanation(text, final_score)
+    # Pass PII-cleaned text to the explainer so no sensitive data is exposed.
+    llm_input = clean_for_llm(text)
+    explanation = generate_explanation(llm_input, final_score)
 
     return {
         "text": text,
+        "skipped": False,
         "ml_prediction": result["prediction"],
         "ml_confidence": result["confidence"],
         "ml_score": ml_score,
@@ -104,13 +118,47 @@ def analyze_sms(text: str) -> dict:
     }
 
 
+def _print_result(result: dict):
+    if result.get("skipped"):
+        print(f"  [SKIPPED] reason: {result['skip_reason']}")
+        return
+    print(f"  Prediction  : {result['prediction']}")
+    print(f"  Final Score : {result['final_score']} / 100")
+    print(f"  ML ({result['ml_prediction']}, conf {result['ml_confidence']:.2%})  "
+          f"Rule score: {result['rule_score']}")
+    print(f"  Explanation : {result['explanation']}")
+
+
 if __name__ == "__main__":
     examples = [
+        # Smishing
+        "URGENT! Your CIBC account has been locked. Login now at http://secure-cibc.xyz",
         "Your instagram account is hacked. Verify now: https://www.instagram.ca",
+        "You have won a lottery! Claim your prize at http://prize-winner.xyz Click now!!",
+        "Your package could not be delivered. Update your address: http://track-pkg.net",
+        # Legitimate
         "Hey, are we still meeting at 7 tonight?",
-        "URGENT! Your bank account has been locked. Login now at http://secure-login.xyz",
+        "Your appointment is confirmed for Tuesday at 3pm.",
     ]
 
+    print("Loading model...")
+    print("\n" + "=" * 65)
+    print("BUILT-IN EXAMPLES")
+    print("=" * 65)
+
     for msg in examples:
-        print(analyze_sms(msg))
-        print("-" * 80)
+        print(f"\nMESSAGE: {msg}")
+        print("-" * 65)
+        _print_result(analyze_sms(msg))
+
+    print("\n" + "=" * 65)
+    print("Enter your own SMS messages to test (type 'quit' to exit):")
+
+    while True:
+        print()
+        msg = input("SMS > ").strip()
+        if msg.lower() in ("quit", "exit", "q"):
+            break
+        if not msg:
+            continue
+        _print_result(analyze_sms(msg))
