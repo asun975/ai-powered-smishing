@@ -107,6 +107,7 @@ def analyze_sms(text: str) -> dict:
 
     return {
         "text": text,
+        "cleaned_text": llm_input,
         "skipped": False,
         "ml_prediction": result["prediction"],
         "ml_confidence": result["confidence"],
@@ -122,6 +123,7 @@ def _print_result(result: dict):
     if result.get("skipped"):
         print(f"  [SKIPPED] reason: {result['skip_reason']}")
         return
+    print(f"  Cleaned     : {result['cleaned_text']}")
     print(f"  Prediction  : {result['prediction']}")
     print(f"  Final Score : {result['final_score']} / 100")
     print(f"  ML ({result['ml_prediction']}, conf {result['ml_confidence']:.2%})  "
