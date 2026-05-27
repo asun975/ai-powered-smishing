@@ -23,6 +23,9 @@ pip install -r requirements.txt
 python src/distilbert_model_prototype.py
 python src/train_model.py
 
+# Create samples for testing
+python src/prepare_data.py
+
 # Test sms-spam-model-v2
 python src/test_model.py
 
