@@ -225,5 +225,5 @@ logs/
 data/
 
 # Android Studio IDE
-.idea/
+/.idea/
 *.iml
