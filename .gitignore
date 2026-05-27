@@ -223,3 +223,7 @@ logs/
 
 # Dataset
 data/
+
+# Android Studio IDE
+.idea/
+*.iml
