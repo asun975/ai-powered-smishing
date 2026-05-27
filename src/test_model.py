@@ -7,7 +7,7 @@ import sys
 
 from datasets import Dataset
 from tqdm import tqdm
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score
 from traceback import print_exception
 from transformers import (
     pipeline,
@@ -124,6 +124,8 @@ def main():
         # Metrics
         accuracy = accuracy_score(labels, all_preds)
         f1 = f1_score(labels, all_preds)
+        recall = recall_score(labels, all_preds)
+        precision = precision_score(labels, all_preds)
         total_time = end_total - start_total
         samples_per_second = len(texts) / total_time
 
@@ -149,6 +151,8 @@ def main():
 
         print(f"Accuracy:             {accuracy:.4f}")
         print(f"F1 Score:             {f1:.4f}")
+        print(f"Precision:             {precision:.4f}")
+        print(f"Recall:             {recall:.4f}")
 
         print("\nPerformance Metrics")
         print("-" * 30)
