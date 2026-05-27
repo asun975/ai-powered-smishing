@@ -44,7 +44,7 @@ train_model.py provides additional training on URLs using a kaggle dataset for m
 - 🛡️ **Quarantine simulation** for high‑risk messages  
 - 🚫 **Blocking simulation** (UI‑level only; no OS‑level blocking)  
 - 🔔 **User alerts** for suspicious content  
-- 🔒 **Data‑cleaning module** (remove sensitive data and PII)
+- 🔒 **Data‑cleaning module** (Preprocessing SMS message for distilBERT. Remove sensitive data and PII)
 
 ## Project Structure
 
