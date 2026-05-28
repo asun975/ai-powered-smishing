@@ -3,12 +3,15 @@ import os
 import pandas as pd
 import time
 import torch
-import sys
 
 from datasets import Dataset
-from tqdm import tqdm
-from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score
-from traceback import print_exception
+from sklearn.metrics import (
+    accuracy_score, 
+    f1_score, 
+    recall_score, 
+    precision_score,
+    confusion_matrix
+)
 from transformers import (
     pipeline,
     AutoTokenizer,
@@ -164,11 +167,22 @@ def main():
             print(f"Peak GPU Memory:      {peak_memory:.2f} MB")
 
         print("=" * 60)
+
+        # Evaluate performance with confusion matrix
+        cm = confusion_matrix(labels, all_preds)
+        cm_labels = np.unique(labels)
+        df_cm = pd.DataFrame(cm, index=cm_labels, columns=cm_labels)
+        print(df_cm)
+
+        # Show true negatives, false positives, false negatives and true positives
+        tn, fp, fn, tp = cm.ravel().tolist()
+        print(f"True Negative: {tn}\nFalse Positive: {fp}\nFalse Negative: {fn}\nTrue Positive: {tp}")
+       
     
     except Exception as e:
             print(f"An unexpected exception occured of type {type(e)}")
             print("*** print_exception:")
-            print_exception(e, limit=2, file=sys.stdout)
+            print(e)
 
 if __name__ == "__main__":
     main()
