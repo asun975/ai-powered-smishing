@@ -4,6 +4,30 @@ from nltk.stem import SnowballStemmer
 
 stemmer = SnowballStemmer("english")
 
+""" 
+Clean SMS input for distilbert model
+- remove media attachments
+- remove emojis
+- remove special characters
+- remove non-english text
+"""
+
+""" 
+Clean SMS input for LLM
+- remove media attachments and replace with placeholder for context
+"""
+
+"""
+Check length after data cleaning excluding placeholders
+"""
+
+"""
+Remove personal identifiable information before sending to API models
+- phone number, email
+- sin, ssn
+- credit/debit card
+
+"""
 # --- PII patterns ---
 
 # Phone: handles (416) 555-1234, 416-555-1234, +1 416.555.1234, +44 20 7946 0958
