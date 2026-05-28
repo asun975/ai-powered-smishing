@@ -4,30 +4,81 @@ from nltk.stem import SnowballStemmer
 
 stemmer = SnowballStemmer("english")
 
-""" 
-Clean SMS input for distilbert model
-- remove media attachments
-- remove emojis
-- remove special characters
-- remove non-english text
-"""
+def removeMedia(sms: str) -> str:
+    """Remove media attachments from SMS message"""
+    sms = re.sub(r"\[(?:image|photo|picture|mms|video|audio|file|attachment|gif|sticker)\]", "",sms)
+    sms = re.sub(r"|<(?:image|photo|mms)>","", sms)
+    sms = re.sub(r"|(?:image|photo|picture|video)\s+(?:attached|sent|received)", "", sms)
+    return sms
 
-""" 
-Clean SMS input for LLM
-- remove media attachments and replace with placeholder for context
-"""
+def removePII(sms: str) -> str:
+    """
+    Replace personal identifiable information from SMS message.
+    - phone number, email
+    - sin, ssn
+    - credit/debit card
+    """
+    # # Phone: handles (416) 555-1234, 416-555-1234, +1 416.555.1234, +44 20 7946 0958
+    country_code = r"(?:\+\d{1,3}[\s.\-]?)?"
+    area_code = r"(?:\(?\d{2,4}\)?[\s.\-]?)"
+    local_number = r"\d{2,4}[\s.\-]\d{2,4}"
+    sms = re.sub(f"{country_code}{area_code}{local_number}", "", sms)
 
-"""
-Check length after data cleaning excluding placeholders
-"""
+    # Email
+    sms = re.sub(r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b", "", sms)
 
-"""
-Remove personal identifiable information before sending to API models
-- phone number, email
-- sin, ssn
-- credit/debit card
+    # Canadian SIN: 123 456 789 or 123-456-789 (requires separator to avoid false positives)
+    sms = re.sub(r"\b\d{3}[\s\-]\d{3}[\s\-]\d{3}\b", "", sms)
 
-"""
+    # US SSN: 123-45-6789
+    sms = re.sub(r"\b\d{3}-\d{2}-\d{4}\b", "", sms) # SSN
+
+    # card pattern
+    sms = re.sub(r"\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b", "", sms)
+    
+    return sms
+
+def removePIIWithContext(sms: str) -> str:
+    """
+    Replace personal identifiable information from SMS message with placeholder text 
+    to keep context for the large language model.
+    - phone number, email
+    - sin, ssn
+    - credit/debit card
+    """
+    # # Phone: handles (416) 555-1234, 416-555-1234, +1 416.555.1234, +44 20 7946 0958
+    country_code = r"(?:\+\d{1,3}[\s.\-]?)?"
+    area_code = r"(?:\(?\d{2,4}\)?[\s.\-]?)"
+    local_number = r"\d{2,4}[\s.\-]\d{2,4}"
+    sms = re.sub(f"{country_code}{area_code}{local_number}", "[PHONE]", sms)
+
+    # Email
+    sms = re.sub(r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b", "[EMAIL]", sms)
+
+    # Canadian SIN: 123 456 789 or 123-456-789 (requires separator to avoid false positives)
+    sms = re.sub(r"\b\d{3}[\s\-]\d{3}[\s\-]\d{3}\b", "[ID]", sms)
+
+    # US SSN: 123-45-6789
+    sms = re.sub(r"\b\d{3}-\d{2}-\d{4}\b", "[ID]", sms) # SSN
+
+    # card pattern
+    sms = re.sub(r"\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b", "[CARD]", sms)
+    
+    return sms
+
+# TODO remove names, mfa codes, addresses
+
+# Text Preprocessing for NLP model
+def keep_english(sms: str) -> str:
+    """Remove any sequence of 2+ special characters and replace extra whitespace with 
+    a single whitespace.
+    TODO non-unicode emoji, combined emoji sequences
+    """
+    sms = re.sub(r"[\s\W]{2,}", "", sms)
+    sms = re.sub(r"\s+", " ", sms).strip()
+
+    return sms
+
 # --- PII patterns ---
 
 # Phone: handles (416) 555-1234, 416-555-1234, +1 416.555.1234, +44 20 7946 0958
@@ -48,6 +99,7 @@ _EMAIL_RE = re.compile(
 
 # Credit/debit card: 16 digits optionally grouped by spaces or dashes
 _CARD_RE = re.compile(
+
     r"\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b"
 )
 
