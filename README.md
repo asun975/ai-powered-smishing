@@ -9,6 +9,7 @@ The initial prototype focuses on individual modules only and does not represent 
 - LLM (TinyLlama) provides a human-readable explanation of a sample message and risk score
 
 ### Set-up Project
+- Download spam.csv from origin: Gustavo/spam.csv and save to data/spam.csv
 
 ```bash
 git clone https://github.com:asun975/ai-powered-smishing.git
@@ -75,7 +76,7 @@ train_model.py provides additional training on URLs using a kaggle dataset for m
 ### Dataset
 Almeida, T. & Hidalgo, J. (2011). SMS Spam Collection [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5CC84.
 
-https://www.kaggle.com/datasets/pilarpieiro/tabular-dataset-ready-for-malicious-url-detection4
+https://www.kaggle.com/datasets/pilarpieiro/tabular-dataset-ready-for-malicious-url-detection
 
 **Test dataset sourced from**
 
