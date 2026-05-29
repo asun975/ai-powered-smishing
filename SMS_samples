@@ -1,0 +1,106 @@
+message,label,has_image_attachment
+"Hey, are we still meeting at 5?",0,false
+"Call me when you get home.",0,false
+"Happy birthday!!! 🎉",0,false
+"Here's the Zoom link: https://zoom.us/j/12345",0,false
+"Your Amazon order has shipped.",0,false
+"Good morning! Don’t forget the meeting today.",0,false
+"Can you pick up milk on your way home?",0,false
+"Your verification code is 482913.",0,false
+"See you at the gym later.",0,false
+"Thanks for the update!",0,false
+"Check out this funny meme I sent 😂",0,true
+"Here’s the picture from yesterday’s trip.",0,true
+"URGENT! Verify your account NOW: http://secure-login-bank.xyz",1,false
+"You won $1000!!! Claim now at bit.ly/freegift",1,false
+"Your PayPal account is suspended. Login here: http://paypal-security-check.ru",1,false
+"Final warning!!! Click NOW!!!",1,false
+"Reset password immediately: tinyurl.com/reset-account",1,false
+"Claim your free iPhone today!",1,false
+"Your account has been compromised. Verify identity now.",1,false
+"Security alert: unusual login detected.",1,false
+"Invoice attached. Open immediately to avoid penalties.",1,true
+"Your package failed delivery. See attached image for instructions.",1,true
+"Important banking document attached. Review now.",1,true
+"Congratulations! See attached image to claim your prize.",1,true
+"Netflix account suspended. Restore access here.",1,false
+"Winner selected! Redeem your free iPhone now.",1,false
+"https://google.com",0,false
+"HTTP://SECURE-LOGIN.COM",1,false
+"www.fakebank.xyz/login",1,false
+"hxxp://malicious-site.ru",1,false
+"bit.ly/abc123",1,false
+"192.168.0.1/login",1,false
+"https://secure-login-bank.xyz/verify?user=123",1,false
+"https://github.com",0,false
+"https://stackoverflow.com",0,false
+"https://www.canada.ca",0,false
+"https://openai.com",0,false
+"   Hello there   ",0,false
+"\nURGENT account locked\n",1,false
+"Click     here     now",1,false
+"Verify\tYour\tAccount",1,false
+"",0,false
+"      ",0,false
+"🚨 URGENT 🚨 Verify now!",1,false
+"Frее iPhоne clаim nоw",1,false
+"Yоur accоunt is lоcked",1,false
+"🔥 LIMITED OFFER 🔥",1,false
+"⚠️ Suspicious login attempt detected",1,false
+"URGENT!!!!!!!!!!!!",1,false
+"$$$$$ WIN NOW $$$$$",1,false
+"Click here?????",1,false
+"FREE---GIFT---NOW",1,false
+"VERIFY___ACCOUNT",1,false
+"Msg from 54321: Verify account",1,false
+"[BANK ALERT] Login required",1,false
+"STOP to unsubscribe",0,false
+"Reply YES to continue",0,false
+"FREE FREE FREE FREE FREE FREE FREE FREE FREE FREE",1,false
+"https://very-long-malicious-url-example.com/verify/account/login/security/update?session=123456789",1,false
+"Claim your reward now reward reward reward reward reward",1,false
+"<script>alert('hack')</script>",1,false
+"' OR 1=1 --",1,false
+"SELECT * FROM users",1,false
+"../../etc/passwd",1,false
+"Hi mom, I’ll be home soon.",0,false
+"Meeting moved to 3 PM today.",0,false
+"Can you send me the assignment?",0,false
+"Thanks for your help yesterday!",0,false
+"Your package is ready for pickup at Canada Post.",0,false
+"Bank notice: unusual activity detected, confirm identity now.",1,false
+"Click this secure link to avoid account suspension: http://bank-security-alert.xyz",1,false
+"You have received a tax refund. Claim now.",1,false
+"Good luck on your exam tomorrow!",0,false
+"Don’t forget grandma’s birthday dinner.",0,false
+"Your prescription is ready for pickup.",0,false
+"Flight AC203 is now boarding.",0,false
+"Hey, can you call me back later?",0,false
+"Package delivered successfully.",0,false
+"Urgent security notice from your bank.",1,false
+"Verify your SIN number immediately.",1,false
+"Your account has unusual transactions.",1,false
+"Click this link to unlock your account.",1,false
+"Immediate response needed to prevent suspension.",1,false
+"Your mailbox is almost full. Upgrade now.",1,false
+"Login required to continue using your account.",1,false
+"Your banking profile has expired.",1,false
+"Payment declined. Update your information.",1,false
+"Account verification required within 24 hours.",1,false
+"Claim CRA refund now using secure portal.",1,false
+"Your parcel is on hold due to unpaid fees.",1,false
+"Amazon account locked due to suspicious activity.",1,false
+"Free vacation giveaway! Limited time offer!",1,false
+"Exclusive deal waiting for you. Click now.",1,false
+"Vacation photos attached from the beach trip!",0,true
+"Family reunion picture attached.",0,true
+"See attached screenshot of the assignment details.",0,true
+"Meeting notes image attached.",0,true
+"Look at this cute dog photo 🐶",0,true
+"Scanned receipt attached for reimbursement.",0,true
+"Security update attached. Open image immediately.",1,true
+"Confidential payroll document attached.",1,true
+"Your account recovery form is attached.",1,true
+"Attached image contains your secure QR login.",1,true
+"Payment confirmation attached. Review urgently.",1,true
+"Click the attached image to claim your reward.",1,true
