@@ -9,8 +9,6 @@ The initial prototype focuses on individual modules only and does not represent 
 - LLM (TinyLlama) provides a human-readable explanation of a sample message and risk score
 
 ### Set-up Project
-- Download spam.csv from origin: Gustavo/spam.csv and save to data/spam.csv
-
 ```bash
 git clone https://github.com:asun975/ai-powered-smishing.git
 cd ai-powered-smishing
@@ -19,16 +17,14 @@ cd ai-powered-smishing
 pip install -r requirements.txt
 ```
 
+Save training datasets to ai-powered-smishing/data/
+- Download spam.csv from origin: Gustavo/spam.csv
+- Download train_dataset.csv from https://www.kaggle.com/datasets/pilarpieiro/tabular-dataset-ready-for-malicious-url-detection
+
 ```bash
 # Train the DistilBERT model
 python src/distilbert_model_prototype.py
 python src/train_model.py
-
-# Create samples for testing
-python src/prepare_data.py
-
-# Test sms-spam-model-v2
-python src/test_model.py
 
 # Generate explanation for assigned risk score with Tiny Llama
 python src/tinyllama.py
@@ -36,6 +32,13 @@ python src/tinyllama.py
 This trains a base DistilBERT model on the SMS Spam Collection dataset and saves the model locally to models/sms-spam-model/
 
 train_model.py provides additional training on URLs using a kaggle dataset for malicious URL detection. This model is saved to models/sms-spam-model-v2/
+
+### Model Evaluation:
+The detection model, sms-spam-model-v2, was tested using benign and smishing messages from the Kaggle dataset SMS Smishing Collection Data Set, and SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION dataset from Mendeley. The model was evaluated on 1000 samples using scikit learn metrics for accuracy, F1 score, precision, recall and a confusion matrix.
+- **Accuracy**: 95%
+- **F1 Score**: 96%
+- **Precision**: 94%
+- **Recall**: 98%
 
 ## Features (in progress)
 
@@ -52,17 +55,19 @@ train_model.py provides additional training on URLs using a kaggle dataset for m
 ```
 .
 ├── app/
+│   ├── activity_main.xml
 │   ├── AndroidManifest.xml
-│   ├── MainActivity.kt
-│   └── activity_main.xml
+│   └── MainActivity.kt
 ├── src/
 │   ├── distilbert_model_prototype.py
+│   ├── prepare_data.py
 │   ├── test_model.py
 │   ├── tinyllama.py
 │   └── train_model.py
 ├── .gitignore
-├── README.md
-└── requirements.txt
+├── README,md
+├── requirements.txt
+└── test_samples.csv
 ```
 
 ## Known issues or limitations
@@ -72,16 +77,16 @@ train_model.py provides additional training on URLs using a kaggle dataset for m
 - Mobile resource contraints like battery, storage, and CPU/GPU memory
 - Android limitations on non-default apps ability to delete and block messages.
 
-## Relevant Links
-### Dataset
-Almeida, T. & Hidalgo, J. (2011). SMS Spam Collection [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5CC84.
+## Acknowledgements
+### Datasets
+- Almeida, T. & Hidalgo, J. (2011). SMS Spam Collection [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5CC84.
 
-https://www.kaggle.com/datasets/pilarpieiro/tabular-dataset-ready-for-malicious-url-detection
+- mishra, sandhya; Soni, Devpriya (2022), “SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION”, Mendeley Data, V1, doi: 10.17632/f45bkkt8pr.1
 
-**Test dataset sourced from**
+- https://www.kaggle.com/datasets/pilarpieiro/tabular-dataset-ready-for-malicious-url-detection
 
 - https://www.kaggle.com/datasets/galactus007/sms-smishing-collection-data-set
-- https://data.mendeley.com/datasets/f45bkkt8pr/1
+
 
 ### DistilBERT transformer model
 - [DistilBERT docs](https://huggingface.co/docs/transformers/en/model_doc/distilbert?usage=Pipeline#transformers.DistilBertModel)
