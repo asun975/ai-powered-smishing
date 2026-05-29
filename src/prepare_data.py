@@ -2,20 +2,17 @@ import pandas as pd
 from os import path
 
 """
-Download and unzip datasets to data/
+To create test_samples.csv:
+
+Download and save datasets to data/
 Mendeley dataset: https://data.mendeley.com/datasets/f45bkkt8pr/1
+Kaggle dataset: https://www.kaggle.com/datasets/galactus007/sms-smishing-collection-data-set
 
-To download Kaggle dataset:
-
-import kagglehub
-
-# Download latest version
-path = kagglehub.dataset_download("galactus007/sms-smishing-collection-data-set")
-
-print("Path to dataset files:", path)
+cd ai-powered-smishing
+python src/prepare_data.py
 """
-KAGGLE_DATA = "data/smssmishcollection/SMSSmishCollection.txt"
-MENDELEY_DATA = "data/SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION/Dataset_5971.csv"
+KAGGLE_DATA = "data/SMSSmishCollection.txt"
+MENDELEY_DATA = "data/Dataset_5971.csv"
 
 def print_info(df):
     print(f"Total samples {df.shape[0]}")
@@ -23,22 +20,8 @@ def print_info(df):
     print(f"Types of smishing texts: {df['label'].unique()}\n")
 
 if __name__ == "__main__":
-    if not path.exists(KAGGLE_DATA):
-            raise FileNotFoundError(
-                f"""Dataset not found at {KAGGLE_DATA}. Run:
-                import kagglehub
-
-                # Download latest version
-                path = kagglehub.dataset_download("galactus007/sms-smishing-collection-data-set")
-
-                print("Path to dataset files:", path)
-                """
-            )
-    
-    if not path.exists(MENDELEY_DATA):
-            raise FileNotFoundError(
-                f"Dataset not found at {MENDELEY_DATA}.\nDownload: https://data.mendeley.com/datasets/f45bkkt8pr/1"
-            )
+    if not path.exists(KAGGLE_DATA) or not path.exists(MENDELEY_DATA):
+            raise FileNotFoundError("Download and save datasets to data/\nMendeley dataset: https://data.mendeley.com/datasets/f45bkkt8pr/1\nKaggle dataset: https://www.kaggle.com/datasets/galactus007/sms-smishing-collection-data-set")
     
     kaggle_df = pd.read_csv(KAGGLE_DATA, sep="\t", header=None, names=['label', 'text'])
 
