@@ -44,7 +44,7 @@ def load_dataset(data, sample_size):
     print("Loading dataset...")
     if not os.path.exists(DATASET_PATH):
             raise FileNotFoundError(
-                f"Test samples not found at {DATASET_PATH}. Run: python src/prepare_data.py"
+                f"Test samples not found at {DATASET_PATH}.\nRun: python src/prepare_data.py\nOr download test_samples.csv from https://github.com/asun975/ai-powered-smishing and save to data/"
             )
 
     # Create dataframe of n random samples
@@ -108,13 +108,13 @@ def main():
                     'risk_score': risk_score
                 }
                 all_preds.append(label)
+                all_results.append(results_dict)
 
             if DEVICE == "cuda":
                     torch.cuda.synchronize()
 
             end_time = time.time() 
 
-            all_results.append(results_dict)
             batch_time = end_time - start_time
 
             print(
