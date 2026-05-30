@@ -54,12 +54,11 @@ class Preprocessing {
         // Remove PII
         fun removePII(message: String): String {
             return message
-                .replace(email, "[EMAIL]")
-                .replace(url, "[URL]")
-                .replace(creditCard, "[CARD")
-                .replace(sin, "[ID]")
-                .replace(ssn, "[ID]")
-                .replace(phone, "[PHONE]")
+                .replace(email, "")
+                .replace(creditCard, "")
+                .replace(sin, "")
+                .replace(ssn, "")
+                .replace(phone, "")
                 .trim()
         }
 
