@@ -113,7 +113,7 @@ class MainActivity : AppCompatActivity() {
 
         // Method 1: Broadcast Receiver
         // broadcast receiver doesn't receive sms messages
-        //startBroadcastReceiver()
+        startBroadcastReceiver()
 
         // Method 2: Database Observer
         startDatabaseObserver()

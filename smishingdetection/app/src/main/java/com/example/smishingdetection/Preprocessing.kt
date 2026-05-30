@@ -1,7 +1,7 @@
 package com.example.smishingdetection
 
 import kotlin.text.replace
-
+// todo: extra whitespace, more PII regex,
 class Preprocessing {
 
     companion object {
