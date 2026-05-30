@@ -66,11 +66,8 @@ class Preprocessing {
         fun cleanSms(message: String): String {
             var inputString = removePII(message)
             return inputString
-                .replace(email, "")
-                .replace(url, "")
                 .replace(emoji, "")
                 .replace(mediaTag, "")
-                .replace(nonLetter, "")
                 .trim()
         }
 
