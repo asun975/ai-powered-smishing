@@ -26,16 +26,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var smsTextView: TextView
     private lateinit var resultTextView: TextView
     private lateinit var classifier: SmishingClassifier
+    //private lateinit var preprocessor: SmsPreprocessor
     private var smsReceiver: BroadcastReceiver? = null
     private var smsObserver: ContentObserver? = null
     private var lastProcessedSmsId: String? = null
 
+    // Static set up
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        super.onCreate(savedInstanceState) // initialize activity
+        setContentView(R.layout.activity_main) // UI
 
         Log.d("MainActivity", "======== App Started ========")
-
+        // Widgets
         smsTextView = findViewById(R.id.smsTextView)
         resultTextView = findViewById(R.id.resultTextView)
 
@@ -49,28 +51,33 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    // todo override fun onPause()
+
+    //
     private fun requestPermissions() {
         Log.d("MainActivity", "Checking permissions")
-
+        // List of permissions to request
         val permissionsNeeded = mutableListOf<String>()
 
+        // Check app permission for receiving SMS
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
             != PackageManager.PERMISSION_GRANTED) {
             permissionsNeeded.add(Manifest.permission.RECEIVE_SMS)
         }
-
+        // Check app permission for reading SMS
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS)
             != PackageManager.PERMISSION_GRANTED) {
             permissionsNeeded.add(Manifest.permission.READ_SMS)
         }
-
+        // Check app permission for post notifications
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED) {
                 permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
-
+        // If permissionsNeeded is not empty request permission from user
+        // or start SMS detection methods
         if (permissionsNeeded.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissionsNeeded.toTypedArray(), 999)
         } else {
@@ -105,7 +112,8 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "SMS Detector Active (Dual Mode)!", Toast.LENGTH_SHORT).show()
 
         // Method 1: Broadcast Receiver
-        startBroadcastReceiver()
+        // broadcast receiver doesn't receive sms messages
+        //startBroadcastReceiver()
 
         // Method 2: Database Observer
         startDatabaseObserver()
@@ -124,7 +132,7 @@ class MainActivity : AppCompatActivity() {
                 try {
                     if (intent?.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
                         val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
-
+                        // Display received messages
                         for (sms in messages) {
                             val body = sms.displayMessageBody
                             val sender = sms.displayOriginatingAddress ?: "Unknown"
@@ -215,20 +223,30 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Process SMS message (called by either broadcast OR database observer)
+     * Log message and change UI for user
+     * classify sms message
      */
     private fun processSmsMessage(sender: String, body: String, source: String) {
+        val preprocessor = Preprocessing
+        // Data cleaning for DistilBERT classifier
+        val inputClassifier = preprocessor.cleanSms(body)
+        // Mask PII for LLM
+        val inputLLM = preprocessor.maskPII(body)
+
+        // Avoid logging unfiltered SMS body
         Log.d("MainActivity", "---------- PROCESSING SMS ($source) ----------")
         Log.d("MainActivity", "From: $sender")
-        Log.d("MainActivity", "Message: $body")
+        Log.d("MainActivity", "Message after data cleaning for classifier: $inputClassifier")
+        Log.d("MainActivity", "Message after PII masking: $inputLLM")
 
         runOnUiThread {
             smsTextView.text = "From: $sender\n\nMessage: $body\n\n(Detected via: $source)"
-            resultTextView.text = "🔍 Analyzing..."
+            resultTextView.text = "Analyzing..."
             Toast.makeText(this, "SMS Detected via $source!", Toast.LENGTH_SHORT).show()
         }
 
         lifecycleScope.launch {
-            classifyMessage(body)
+            classifyMessage(inputClassifier)
         }
     }
 
@@ -268,6 +286,8 @@ class MainActivity : AppCompatActivity() {
         }
         Log.d("MainActivity", "========== CLASSIFICATION END ==========")
     }
+
+    //Data cleaning for classifier
 
     override fun onDestroy() {
         super.onDestroy()
