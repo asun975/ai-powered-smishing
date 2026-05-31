@@ -21,6 +21,7 @@ import android.provider.Telephony
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity() {
     private lateinit var smsTextView: TextView
@@ -269,12 +270,12 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 when (label) {
                     "SPAM" -> {
-                        resultTextView.text = "⚠️ SMISHING DETECTED!\n\n$riskScore% confidence"
+                        resultTextView.text = "⚠️ SMISHING DETECTED!\n\n${riskScore.roundToInt()}% confidence"
                         resultTextView.setTextColor(getColor(android.R.color.holo_red_light))
                         Toast.makeText(this@MainActivity, "SMISHING DETECTED!", Toast.LENGTH_LONG).show()
                     }
                     "SAFE" -> {
-                        resultTextView.text = "✅ Message appears safe\n\n$riskScore% confidence"
+                        resultTextView.text = "✅ Message appears safe\n\n${riskScore.roundToInt()}% confidence"
                         resultTextView.setTextColor(getColor(android.R.color.holo_green_dark))
                     }
                     "ERROR" -> {
