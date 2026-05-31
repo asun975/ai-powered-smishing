@@ -257,19 +257,19 @@ class MainActivity : AppCompatActivity() {
         Log.d("MainActivity", "========== CLASSIFICATION START ==========")
         try {
             val (label, confidence) = classifier.classify(body)
-            val percentage = (confidence * 100).toInt()
+            val riskScore = (confidence * 100).toInt()
 
-            Log.d("MainActivity", "Result: $label ($percentage%)")
+            Log.d("MainActivity", "Result: $label ($riskScore%)")
 
             runOnUiThread {
                 when (label) {
                     "SPAM" -> {
-                        resultTextView.text = "⚠️ SMISHING DETECTED!\n\n$percentage% confidence"
+                        resultTextView.text = "⚠️ SMISHING DETECTED!\n\n$riskScore% confidence"
                         resultTextView.setTextColor(getColor(android.R.color.holo_red_light))
                         Toast.makeText(this@MainActivity, "SMISHING DETECTED!", Toast.LENGTH_LONG).show()
                     }
                     "SAFE" -> {
-                        resultTextView.text = "✅ Message appears safe\n\n$percentage% confidence"
+                        resultTextView.text = "✅ Message appears safe\n\n$riskScore% confidence"
                         resultTextView.setTextColor(getColor(android.R.color.holo_green_dark))
                     }
                     "ERROR" -> {
