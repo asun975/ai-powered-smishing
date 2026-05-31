@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity() {
         resultTextView = findViewById(R.id.resultTextView)
 
         // Generated in Collab code
-        val apiURL = "https://totoro2211-sms-classifier-api.hf.space/classify"
+        val apiURL = "https://[Username-model].hf.space/classify"
         classifier = SmishingClassifier(apiURL)
 
         resultTextView.text = "Setting up"
