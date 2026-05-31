@@ -257,7 +257,12 @@ class MainActivity : AppCompatActivity() {
         Log.d("MainActivity", "========== CLASSIFICATION START ==========")
         try {
             val (label, confidence) = classifier.classify(body)
-            val riskScore = (confidence * 100).toInt()
+            val riskScore = if (label == "SAFE") {
+                100 - confidence * 100
+            } else {
+                confidence * 100
+            }
+            //val riskScore = (confidence * 100).toInt()
 
             Log.d("MainActivity", "Result: $label ($riskScore%)")
 
