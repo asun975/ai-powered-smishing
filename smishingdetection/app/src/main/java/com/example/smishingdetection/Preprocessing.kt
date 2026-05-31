@@ -1,11 +1,12 @@
 package com.example.smishingdetection
 
 import kotlin.text.replace
-// todo: extra whitespace, more PII regex,
+
 class Preprocessing {
 
     companion object {
         // Regex patterns
+        // todo: extra whitespace, more PII regex,
         private val phone = Regex(
             """(?:
                 \+\d{1,3}[\s.\-]?(?:\(?\d{1,4}\)?[\s.\-]?)?\d{1,4}[\s.\-]\d{2,4}[\s.\-]\d{2,4}
@@ -62,15 +63,6 @@ class Preprocessing {
                 .trim()
         }
 
-        // Data cleaning for DistilBERT classifier
-        fun cleanSms(message: String): String {
-            var inputString = removePII(message)
-            return inputString
-                .replace(emoji, "")
-                .replace(mediaTag, "")
-                .trim()
-        }
-
         // Mask Personal Identifiable Information (PII) for LLM
         fun maskPII(message: String): String {
             return message
@@ -80,6 +72,17 @@ class Preprocessing {
                 .replace(sin, "[ID]")
                 .replace(ssn, "[ID]")
                 .replace(phone, "[PHONE]")
+                .trim()
+        }
+
+        // Data cleaning
+        fun cleanSms(message: String): String {
+            var inputString = removePII(message)
+            return inputString
+                .replace(emoji, "")
+                .replace(mediaTag, "")
+                // todo whitespace
+                // todo code injection
                 .trim()
         }
     }
