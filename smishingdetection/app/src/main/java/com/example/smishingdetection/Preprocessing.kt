@@ -35,7 +35,8 @@ class Preprocessing {
         private val url = Regex("""http\S+""")
         private val ipAddress = Regex("""[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}""")
         private val whitespaces = Regex("""\s+""")
-        private val punctuation = Regex("""""\p{Punct}""")//todo
+        private val punctuation = Regex("\\p{Punct}")
+
         // Remove PII
         // url is not removed because model is trained on url strings
         fun blockPII(message: String): String {
