@@ -6,13 +6,8 @@ class Preprocessing {
 
     companion object {
         // Regex patterns
-        // todo: extra whitespace, more PII regex,
         private val phone = Regex(
-            """(?:
-                \+\d{1,3}[\s.\-]?(?:\(?\d{1,4}\)?[\s.\-]?)?\d{1,4}[\s.\-]\d{2,4}[\s.\-]\d{2,4}
-                |
-                \(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4}
-            )""".trimIndent(),
+            """(?:\+\d{1,3}[\s.\-]?(?:\(?\d{1,4}\)?[\s.\-]?)?\d{1,4}[\s.\-]\d{2,4}[\s.\-]\d{2,4}|\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4})""".trimIndent(),
             setOf(RegexOption.COMMENTS)
         )
 
@@ -32,34 +27,27 @@ class Preprocessing {
             """\b\d{3}-\d{2}-\d{4}\b"""
         )
 
-        private val mediaTag = Regex(
-            """\[(?:image|photo|picture|mms|video|audio|file|attachment|gif|sticker)\]
-            |<(?:image|photo|mms)>
-            |(?:image|photo|picture|video)\s+(?:attached|sent|received)
-            """.trimIndent(),
-            setOf(RegexOption.IGNORE_CASE, RegexOption.COMMENTS)
-        )
-
         private val emoji = Regex(
             """[\uD83C-\uDBFF\uDC00-\uDFFF]"""
         )
-
-        private val url = Regex(
-            """http\S+"""
-        )
-
-        private val nonLetter = Regex(
-            """[^a-zA-Z\s]"""
-        )
-
+        private val bankAccount = Regex("""\s[0-9]{9,18}\s""")
+        private val mfaCode = Regex("""[0-9]{6}""")
+        private val url = Regex("""http\S+""")
+        private val ipAddress = Regex("""[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}""")
+        private val whitespaces = Regex("""\s+""")
+        private val punctuation = Regex("""""\p{Punct}""")//todo
         // Remove PII
-        fun removePII(message: String): String {
+        // url is not removed because model is trained on url strings
+        fun blockPII(message: String): String {
             return message
                 .replace(email, "")
                 .replace(creditCard, "")
                 .replace(sin, "")
                 .replace(ssn, "")
                 .replace(phone, "")
+                .replace(ipAddress, "")
+                .replace(bankAccount, "")
+                .replace(mfaCode, "")
                 .trim()
         }
 
@@ -72,17 +60,19 @@ class Preprocessing {
                 .replace(sin, "[ID]")
                 .replace(ssn, "[ID]")
                 .replace(phone, "[PHONE]")
+                .replace(ipAddress, "[IP]")
+                .replace(bankAccount, "[ACCOUNT]")
+                .replace(mfaCode, "[6-DIGIT MFA]")
                 .trim()
         }
 
         // Data cleaning
+        //todo preserve urls during text preprocessing
         fun cleanSms(message: String): String {
-            var inputString = removePII(message)
-            return inputString
+            return blockPII(message)
                 .replace(emoji, "")
-                .replace(mediaTag, "")
-                // todo whitespace
-                // todo code injection
+                .replace(punctuation, "")
+                .replace(whitespaces, " ")
                 .trim()
         }
     }
