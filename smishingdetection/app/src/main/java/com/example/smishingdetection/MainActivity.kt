@@ -270,12 +270,12 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 when (label) {
                     "SPAM" -> {
-                        resultTextView.text = "⚠️ SMISHING DETECTED!\n\n${riskScore.roundToInt()}% confidence"
+                        resultTextView.text = "⚠️ SMISHING DETECTED!\n\n${riskScore.roundToInt()}% Risk Score"
                         resultTextView.setTextColor(getColor(android.R.color.holo_red_light))
                         Toast.makeText(this@MainActivity, "SMISHING DETECTED!", Toast.LENGTH_LONG).show()
                     }
                     "SAFE" -> {
-                        resultTextView.text = "✅ Message appears safe\n\n${riskScore.roundToInt()}% confidence"
+                        resultTextView.text = "✅ Message appears safe\n\n${riskScore.roundToInt()}% Risk Score"
                         resultTextView.setTextColor(getColor(android.R.color.holo_green_dark))
                     }
                     "ERROR" -> {
