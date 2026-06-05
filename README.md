@@ -34,7 +34,7 @@ This trains a base DistilBERT model on the SMS Spam Collection dataset and saves
 train_model.py provides additional training on URLs using a kaggle dataset for malicious URL detection. This model is saved to models/sms-spam-model-v2/
 
 ### Model Evaluation:
-The detection model, sms-spam-model-v2, was tested using benign and smishing messages from the Kaggle dataset SMS Smishing Collection Data Set, and SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION dataset from Mendeley.
+The detection model, sms-spam-model-v2, was tested using benign and smishing messages from the Kaggle dataset SMS Smishing Collection Data Set, and SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION dataset from Mendeley. The test dataset was preprocessed and sanitized to closely replicate the real conditions of SMS messages passed into our model
 
 We evaluated the model using scikit learn metrics for accuracy, F1 score, precision, recall and a confusion matrix.
 - **Accuracy**: 94.6%
