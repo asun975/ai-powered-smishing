@@ -1,5 +1,4 @@
 import re
-import string
 
 _PHONE_RE = re.compile(
     r"""
@@ -21,7 +20,8 @@ _CARD_RE = re.compile(
     r"\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b"
 )
 
-# Canadian SIN: 123 456 789 or 123-456-789 (requires separator to avoid false positives)
+# Canadian SIN: 123 456 789 or 123-456-789 
+# (requires separator to avoid false positives)
 _SIN_RE = re.compile(r"\b\d{3}[\s\-]\d{3}[\s\-]\d{3}\b")
 
 # US SSN: 123-45-6789
@@ -83,5 +83,7 @@ def text_preprocess(sms_text: str) -> str:
 
 # Separate removing special characters to test model performance
 def remove_special_char(sms_text: str) -> str:
-    sms_text = _SPECIAL_CHAR_RE.sub("", sms_text)
+    sms_text = _SPECIAL_CHAR_RE.sub(" ", sms_text) # prevent words from joining
+    # remove extra whitespaces from special character regex
+    sms_text = _WHITESPACE_RE.sub(" ", sms_text)  
     return sms_text
