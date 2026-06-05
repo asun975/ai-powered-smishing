@@ -42,6 +42,8 @@ _URL_RE = re.compile(r"http\S+")
 
 _WHITESPACE_RE = re.compile(r"\s+")
 
+_SPECIAL_CHAR_RE = re.compile(r'[^\w\s\d]')
+
 # Remove PII
 def sanitize_text(sms_text: str) -> str:
     sms_text = _EMAIL_RE.sub("", sms_text)
@@ -81,5 +83,5 @@ def text_preprocess(sms_text: str) -> str:
 
 # Separate removing special characters to test model performance
 def remove_special_char(sms_text: str) -> str:
-    sms_text = sms_text.translate(str.maketrans('', '', string.punctuation))
+    sms_text = _SPECIAL_CHAR_RE.sub("", sms_text)
     return sms_text
