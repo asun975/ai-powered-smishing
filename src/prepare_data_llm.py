@@ -95,15 +95,7 @@ def main():
         all_results = []
         all_preds = []
 
-        # Measure inference time
-        print("Running inference benchmark...")
-        start_total = time.time()
-
         for batch in batched_dataset:
-
-            start_time = time.time()
-            if DEVICE=="cuda":
-                torch.cuda.reset_peak_memory_stats()
 
             for processed_text, original_text in zip(batch['sanitized_text'], batch['text']):
                 result = classifier(processed_text)[0]
@@ -112,41 +104,18 @@ def main():
                 risk_score = score * 100 if label == "SPAM" else (1 - score) * 100
                 results_dict = {
                     'original_text': original_text,
-                    'processed_text': processed_text,
+                    'processed_text': processed_text, 
                     'pred': label,
-                    'confidence':score,
                     'risk_score': risk_score
                 }
                 all_preds.append(label)
                 all_results.append(results_dict)
-
-            if DEVICE == "cuda":
-                    torch.cuda.synchronize()
-
-            end_time = time.time() 
-
-            batch_time = end_time - start_time
-
-            print(
-                f"| Batch Size: {len(batch['sanitized_text'])} "
-                f"| Time: {batch_time:.4f}s"
-            )
-
-        end_total = time.time()
 
         # Metrics
         accuracy = accuracy_score(labels, all_preds)
         f1 = f1_score(labels, all_preds)
         recall = recall_score(labels, all_preds)
         precision = precision_score(labels, all_preds)
-        total_time = end_total - start_total
-        samples_per_second = len(texts) / total_time
-
-        # Device memory
-        if DEVICE == "cuda":
-            peak_memory = torch.cuda.max_memory_allocated() / 1024**2
-        else:
-            peak_memory = None
         
         # Results
         print("\n" + "=" * 60)
@@ -166,16 +135,6 @@ def main():
         print(f"F1 Score:             {f1:.4f}")
         print(f"Precision:             {precision:.4f}")
         print(f"Recall:             {recall:.4f}")
-
-        print("\nPerformance Metrics")
-        print("-" * 30)
-
-        print(f"Total Inference Time: {total_time:.4f} sec")
-        print(f"Throughput:           {samples_per_second:.2f} samples/sec")
-
-        if peak_memory is not None:
-            print(f"Peak GPU Memory:      {peak_memory:.2f} MB")
-
         print("=" * 60)
 
         # Evaluate performance with confusion matrix
