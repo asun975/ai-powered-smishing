@@ -19,7 +19,7 @@ from transformers import (
 )
 
 from preprocessing import sanitize_text, removeUrl, text_preprocess, remove_special_char
-
+#TODO logging results
 N_SIZE=1000
 BATCH_SIZE=32
 MAX_LENGTH=128
@@ -68,7 +68,7 @@ def main():
         # Load dataset
         df = load_dataset(DATASET_PATH, N_SIZE)
 
-        # Text preprocessing, keep URL 
+        # Text preprocessing and sanitization
         df["sanitized_text"] = df["text"].copy()
         df["sanitized_text"] = df["sanitized_text"].apply(lambda x: sanitize_text(x))
         df["sanitized_text"] = df["sanitized_text"].apply(lambda x: removeUrl(x))
