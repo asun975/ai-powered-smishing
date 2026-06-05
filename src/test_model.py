@@ -105,13 +105,14 @@ def main():
             if DEVICE=="cuda":
                 torch.cuda.reset_peak_memory_stats()
 
-            for text in batch['sanitized_text']:
-                result = classifier(text)[0]
+            for processed_text, original_text in zip(batch['sanitized_text'], batch['text']):
+                result = classifier(processed_text)[0]
                 label = {"LABEL_0": 0, "LABEL_1": 1}[result["label"]]
                 score = result["score"]
                 risk_score = score * 100 if label == "SPAM" else (1 - score) * 100
                 results_dict = {
-                    'processed_text': text,
+                    'original_text': original_text,
+                    'processed_text': processed_text,
                     'pred': label,
                     'confidence':score,
                     'risk_score': risk_score
@@ -187,6 +188,11 @@ def main():
         tn, fp, fn, tp = cm.ravel().tolist()
         print(f"True Negative: {tn}\nFalse Positive: {fp}\nFalse Negative: {fn}\nTrue Positive: {tp}")
        
+        # Save test results with original text
+        df_results = pd.DataFrame.from_dict(all_results)
+        # TODO: save original text and masked text for llm input
+        df_results.to_csv("data/test_results.csv")
+        print("Saved all results to data/test_results.csv")
     
     except Exception as e:
             print(f"An unexpected exception occured of type {type(e)}")
