@@ -109,7 +109,7 @@ def main():
                 result = classifier(processed_text)[0]
                 label = {"LABEL_0": 0, "LABEL_1": 1}[result["label"]]
                 score = result["score"]
-                risk_score = score * 100 if label == "SPAM" else (1 - score) * 100
+                risk_score = score if label == 1 else (1.0 - score)
                 results_dict = {
                     'original_text': original_text,
                     'processed_text': processed_text,
