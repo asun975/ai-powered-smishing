@@ -18,6 +18,8 @@ from transformers import (
     AutoModelForSequenceClassification
 )
 
+from preprocessing import sanitize_text, removeUrl, text_preprocess, remove_special_char
+
 N_SIZE=1000
 BATCH_SIZE=32
 MAX_LENGTH=128
@@ -52,11 +54,8 @@ def load_dataset(data, sample_size):
     df = df.sample(n=sample_size, random_state=42)
     # Convert labels to numeric
     df["label"] = df["label"].map({"ham": 0, "smishing": 1})
-
-    # Convert to Hugging Face dataset
-    dataset = Dataset.from_pandas(df)
     
-    return dataset
+    return df
 
 def main():
     try:
@@ -67,12 +66,22 @@ def main():
         classifier = pipeline("text-classification", device=DEVICE, model=model, tokenizer=tokenizer)
 
         # Load dataset
-        dataset = load_dataset(DATASET_PATH, N_SIZE)
+        df = load_dataset(DATASET_PATH, N_SIZE)
+
+        # Text preprocessing, keep URL 
+        df["sanitized_text"] = df["text"].copy()
+        df["sanitized_text"] = df["sanitized_text"].apply(lambda x: sanitize_text(x))
+        df["sanitized_text"] = df["sanitized_text"].apply(lambda x: removeUrl(x))
+        df["sanitized_text"] = df["sanitized_text"].apply(lambda x: text_preprocess(x))
+        df["sanitized_text"] = df["sanitized_text"].apply(lambda x: remove_special_char(x))
+
+        # Convert to Hugging Face dataset
+        dataset = Dataset.from_pandas(df)
         
         # Tokenize features
         dataset = dataset.map(
             lambda examples: tokenizer(
-                examples["text"], 
+                examples["sanitized_text"], 
                 truncation=True,
                 padding="max_length",
                 max_length=MAX_LENGTH,
@@ -81,7 +90,7 @@ def main():
         
         batched_dataset = dataset.batch(batch_size=BATCH_SIZE)
 
-        texts = dataset['text']
+        texts = dataset['sanitized_text']
         labels = dataset['label']
         all_results = []
         all_preds = []
@@ -96,13 +105,13 @@ def main():
             if DEVICE=="cuda":
                 torch.cuda.reset_peak_memory_stats()
 
-            for text in batch['text']:
+            for text in batch['sanitized_text']:
                 result = classifier(text)[0]
                 label = {"LABEL_0": 0, "LABEL_1": 1}[result["label"]]
                 score = result["score"]
                 risk_score = score * 100 if label == "SPAM" else (1 - score) * 100
                 results_dict = {
-                    'message': text,
+                    'processed_text': text,
                     'pred': label,
                     'confidence':score,
                     'risk_score': risk_score
@@ -118,7 +127,7 @@ def main():
             batch_time = end_time - start_time
 
             print(
-                f"| Batch Size: {len(batch['text'])} "
+                f"| Batch Size: {len(batch['sanitized_text'])} "
                 f"| Time: {batch_time:.4f}s"
             )
 
