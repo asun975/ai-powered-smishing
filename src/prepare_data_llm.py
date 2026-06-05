@@ -93,64 +93,26 @@ def main():
             )
         
         batched_dataset = dataset.batch(batch_size=BATCH_SIZE)
-
-        texts = dataset['sanitized_text']
-        labels = dataset['label']
         all_results = []
         all_preds = []
 
         for batch in batched_dataset:
 
-            for processed_text, original_text, masked_text in zip(batch['sanitized_text'], batch['text'], batch['masked_text']):
+            for processed_text, original_text, masked_text, ground_truth in zip(batch['sanitized_text'], batch['text'], batch['masked_text'], batch['label']):
                 result = classifier(processed_text)[0]
                 label = {"LABEL_0": 0, "LABEL_1": 1}[result["label"]]
                 score = result["score"]
                 risk_score = score * 100 if label == "SPAM" else (1 - score) * 100
-                results_dict = {
+                results = {
                     'original_text': original_text,
                     'processed_text': processed_text, 
                     'masked_text': masked_text,
                     'pred': label,
+                    'classification': ground_truth,
                     'risk_score': risk_score
                 }
                 all_preds.append(label)
-                all_results.append(results_dict)
-
-        # Metrics
-        accuracy = accuracy_score(labels, all_preds)
-        f1 = f1_score(labels, all_preds)
-        recall = recall_score(labels, all_preds)
-        precision = precision_score(labels, all_preds)
-        
-        # Results
-        print("\n" + "=" * 60)
-        print("BENCHMARK RESULTS")
-        print("=" * 60)
-
-        print(f"Model:                {MODEL_NAME}")
-        print(f"Device:               {DEVICE}")
-        print(f"Dataset Size:         {len(texts)}")
-        print(f"Batch Size:           {BATCH_SIZE}")
-        print(f"Max Sequence Length:  {MAX_LENGTH}")
-
-        print("\nEvaluation Metrics")
-        print("-" * 30)
-
-        print(f"Accuracy:             {accuracy:.4f}")
-        print(f"F1 Score:             {f1:.4f}")
-        print(f"Precision:             {precision:.4f}")
-        print(f"Recall:             {recall:.4f}")
-        print("=" * 60)
-
-        # Evaluate performance with confusion matrix
-        cm = confusion_matrix(labels, all_preds)
-        cm_labels = np.unique(labels)
-        df_cm = pd.DataFrame(cm, index=cm_labels, columns=cm_labels)
-        print(df_cm)
-
-        # Show true negatives, false positives, false negatives and true positives
-        tn, fp, fn, tp = cm.ravel().tolist()
-        print(f"True Negative: {tn}\nFalse Positive: {fp}\nFalse Negative: {fn}\nTrue Positive: {tp}")
+                all_results.append(results)
        
         # Save test results with original text
         df_results = pd.DataFrame.from_dict(all_results)
