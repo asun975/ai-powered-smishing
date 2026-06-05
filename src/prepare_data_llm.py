@@ -18,7 +18,7 @@ from transformers import (
     AutoModelForSequenceClassification
 )
 
-from preprocessing import sanitize_text, removeUrl, text_preprocess, remove_special_char
+from preprocessing import sanitize_text, removeUrl, text_preprocess, remove_special_char, maskPII
 
 N_SIZE=1000
 BATCH_SIZE=32
@@ -68,12 +68,16 @@ def main():
         # Load dataset
         df = load_dataset(DATASET_PATH, N_SIZE)
 
-        # Text preprocessing, keep URL 
+        # Create column for sanitized sms text
         df["sanitized_text"] = df["text"].copy()
         df["sanitized_text"] = df["sanitized_text"].apply(lambda x: sanitize_text(x))
         df["sanitized_text"] = df["sanitized_text"].apply(lambda x: removeUrl(x))
         df["sanitized_text"] = df["sanitized_text"].apply(lambda x: text_preprocess(x))
         df["sanitized_text"] = df["sanitized_text"].apply(lambda x: remove_special_char(x))
+
+        # Create column for masked PII in sms text
+        df['masked_text'] = df['text'].copy()
+        df['masked_text'] = df['masked_text'].apply(lambda x: maskPII(x))
 
         # Convert to Hugging Face dataset
         dataset = Dataset.from_pandas(df)
@@ -97,7 +101,7 @@ def main():
 
         for batch in batched_dataset:
 
-            for processed_text, original_text in zip(batch['sanitized_text'], batch['text']):
+            for processed_text, original_text, masked_text in zip(batch['sanitized_text'], batch['text'], batch['masked_text']):
                 result = classifier(processed_text)[0]
                 label = {"LABEL_0": 0, "LABEL_1": 1}[result["label"]]
                 score = result["score"]
@@ -105,6 +109,7 @@ def main():
                 results_dict = {
                     'original_text': original_text,
                     'processed_text': processed_text, 
+                    'masked_text': masked_text,
                     'pred': label,
                     'risk_score': risk_score
                 }
