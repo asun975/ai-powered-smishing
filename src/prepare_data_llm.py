@@ -95,8 +95,8 @@ def main():
 
         print(df_samples.info()) # check dataframe contents
 
-        # Save to csv with index column
-        df_samples.to_csv(OUTPUT_PATH)
+        # Save to csv
+        df_samples.to_csv(OUTPUT_PATH, index=False)
         print(f"\nSaved all results to {OUTPUT_PATH}")
     
     except Exception as e:
