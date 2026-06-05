@@ -20,8 +20,17 @@ def print_info(df):
     print(f"Types of smishing texts: {df['label'].unique()}\n")
 
 if __name__ == "__main__":
-    if not path.exists(KAGGLE_DATA) or not path.exists(MENDELEY_DATA):
-            raise FileNotFoundError(f"Expected to find datasets at {MENDELEY_DATA} and {KAGGLE_DATA}\nDownload and save datasets to data/\nMendeley dataset: https://data.mendeley.com/datasets/f45bkkt8pr/1\nKaggle dataset: https://www.kaggle.com/datasets/galactus007/sms-smishing-collection-data-set")
+
+    if not path.exists(KAGGLE_DATA):
+        raise FileNotFoundError(f"""Missing dataset at {KAGGLE_DATA}
+            Download from:
+            https://www.kaggle.com/datasets/galactus007/sms-smishing-collection-data-set
+            """)
+    if not path.exists(MENDELEY_DATA):
+        raise FileNotFoundError(f"""Missing dataset at {MENDELEY_DATA}
+            Download from:
+            https://data.mendeley.com/datasets/f45bkkt8pr/1
+            """)
     
     kaggle_df = pd.read_csv(KAGGLE_DATA, sep="\t", header=None, names=['label', 'text'])
 
