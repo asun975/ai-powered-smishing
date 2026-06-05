@@ -61,7 +61,8 @@ def removeUrl(sms_text: str) -> str:
     sms_text = _URL_RE.sub("", sms_text)
     return sms_text
 
-# Mask Personal Identifiable Information (PII) for LLM
+# Mask PII (Personally Identifiable Information) 
+# while keeping context for LLM
 def maskPII(sms_text: str) -> str:
     sms_text = _EMAIL_RE.sub("[EMAIL]", sms_text)
     sms_text = _PHONE_RE.sub("[PHONE]", sms_text)
