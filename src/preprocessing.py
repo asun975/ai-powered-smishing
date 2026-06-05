@@ -72,6 +72,7 @@ def maskPII(sms_text: str) -> str:
     sms_text = _MFA_RE.sub("[CODE]", sms_text)
     sms_text = _IP_ADDRESS_RE.sub("[IP ADDRESS]", sms_text)
     sms_text = _URL_RE.sub("[URL]", sms_text)
+    return sms_text
 
 # Data cleaning
 def text_preprocess(sms_text: str) -> str:
