@@ -74,7 +74,7 @@ def main():
             result = classifier(t)[0]
             pred = {"LABEL_0": 0, "LABEL_1": 1}[result["label"]]
             score = result["score"]
-            risk_score = score * 100 if pred == "SPAM" else (1 - score) * 100
+            risk_score = score if pred == 1 else (1 - score)
             results = {
                 'processed_text': t, 
                 'pred': pred,
