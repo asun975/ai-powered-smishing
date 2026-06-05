@@ -188,9 +188,8 @@ def main():
         tn, fp, fn, tp = cm.ravel().tolist()
         print(f"True Negative: {tn}\nFalse Positive: {fp}\nFalse Negative: {fn}\nTrue Positive: {tp}")
        
-        # Save test results with original text
+        # Save test results to csv
         df_results = pd.DataFrame.from_dict(all_results)
-        # TODO: save original text and masked text for llm input
         df_results.to_csv("data/test_results.csv")
         print("Saved all results to data/test_results.csv")
     
