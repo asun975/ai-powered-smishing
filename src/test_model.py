@@ -46,7 +46,7 @@ def load_dataset(data, sample_size):
     print("Loading dataset...")
     if not os.path.exists(DATASET_PATH):
             raise FileNotFoundError(
-                f"Test samples not found at {DATASET_PATH}.\nRun: python src/prepare_data.py\nOr download test_samples.csv from https://github.com/asun975/ai-powered-smishing and save to data/"
+                f"Test samples not found at {DATASET_PATH}.\nRun: python src/prepare_data_nlp.py\nOr download test_samples.csv from https://github.com/asun975/ai-powered-smishing and save to data/"
             )
 
     # Create dataframe of n random samples
