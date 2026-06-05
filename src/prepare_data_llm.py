@@ -100,18 +100,18 @@ def main():
 
             for processed_text, original_text, masked_text, ground_truth in zip(batch['sanitized_text'], batch['text'], batch['masked_text'], batch['label']):
                 result = classifier(processed_text)[0]
-                label = {"LABEL_0": 0, "LABEL_1": 1}[result["label"]]
+                pred = {"LABEL_0": 0, "LABEL_1": 1}[result["label"]]
                 score = result["score"]
-                risk_score = score * 100 if label == "SPAM" else (1 - score) * 100
+                risk_score = score * 100 if pred == "SPAM" else (1 - score) * 100
                 results = {
                     'original_text': original_text,
                     'processed_text': processed_text, 
                     'masked_text': masked_text,
-                    'pred': label,
-                    'classification': ground_truth,
+                    'pred': pred,
+                    'label': ground_truth,
                     'risk_score': risk_score
                 }
-                all_preds.append(label)
+                all_preds.append(pred)
                 all_results.append(results)
        
         # Save test results with original text
