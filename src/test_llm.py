@@ -4,7 +4,7 @@ import json
 import time
 
 DATASET_PATH = 'data/llm_test_samples.csv'
-API_URL = '' # Paste endpoint url for LLM
+API_URL = 'https://[Username-model].space/explain' # Paste endpoint url for LLM
 
 if __name__ == "__main__":
     # Load test samples
@@ -12,8 +12,8 @@ if __name__ == "__main__":
     test_df = test_df.rename(columns={'pred':'classification', 'masked_text':'text'})
 
     # Get one random sample 
-    sample = test_df.sample(n=1).iloc[0]
-    print(sample)
+    sample = test_df.sample(n=1, random_state=42).iloc[0]
+    #print(sample)
    
     # Data must match format expected by API
     sample = sample[['text', 'classification', 'risk_score']]
@@ -21,8 +21,9 @@ if __name__ == "__main__":
 
     # Convert classification to string labels
     payload['classification'] = "SPAM" if payload['classification'] == 1 else "SAFE"
-    print("dict: ", payload)
-    print("json.dumps(): ", json.dumps(payload))
+    print("Text: " + payload["text"])
+    print("Classification: " + payload["classification"])
+    print("Risk_Score: ", payload["risk_score"])
 
     headers = {
         "Content-Type": "application/json",
@@ -36,7 +37,8 @@ if __name__ == "__main__":
 
     if response.status_code == 200:
         data = response.json()
-        print(data)
+        print("Model: ", data.get("version"))
+        print("Explanation: ", data.get("explanation"))
     else:
         print(response.status_code)
         print(response.headers.get("Content-Type"))
