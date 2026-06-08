@@ -41,6 +41,16 @@ We evaluated the model using scikit learn metrics for accuracy, F1 score, precis
 - **F1 Score**: 96.0%
 - **Precision**: 94.5%
 - **Recall**: 97.6%
+#### Set-up Classifier API
+
+1. Create Huggingface Space Account: https://huggingface.co/spaces
+2. Upload: app.py, requirements1.txt, Dockerfile
+3. Add secret: HF_TOKEN = your HF token
+4. Deploy (5-10 min build time)
+5. Update Android in MainActivity.kt: `val apiUrl = "https://[Username-ModelName].hf.space/classify"`
+
+API endpoint: POST /classify with {"text": "message"}
+Returns: {"label": "SPAM"/"SAFE", "confidence": 0.95}
 
 ## Features (in progress)
 
