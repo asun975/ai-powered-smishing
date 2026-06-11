@@ -2,9 +2,10 @@
 
 Our project is an Android application capable of performing real‑time analysis of incoming SMS messages to detect potential smishing (SMS phishing) attempts. Incoming SMS messages are evaluated using a text classification API that assigns a dynamic risk score, and a Large Language Model (LLM) API will generate clear, human‑readable explanations describing why the message was flagged. Based on the assessed risk level, the app can trigger alerts, quarantine suspicious messages, or allow the user to block the sender.
 
-## Features (complete)
+## Features
+### Complete
 - 🔒 **Data‑cleaning module** (text preprocessing and data sanitization)
-## Features (in progress)
+### In Progress
 - 🔍 **Real‑time SMS scanning**  
 - 🧠 **Risk scoring via classification API**  
 - 💬 **LLM‑generated explanations** for flagged messages  
@@ -12,7 +13,7 @@ Our project is an Android application capable of performing real‑time analysis
 - 🚫 **Blocking simulation** (UI‑level only; no OS‑level blocking)  
 - 🔔 **User alerts** for suspicious content
 
-## Model Evaluation:
+## Model Evaluation
 The detection model, sms-spam-model-v2, was tested using benign and smishing messages from the Kaggle dataset SMS Smishing Collection Data Set, and SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION dataset from Mendeley. The test dataset was preprocessed and sanitized to closely replicate the real conditions of SMS messages passed into our model
 
 We evaluated the model using scikit learn metrics for accuracy, F1 score, precision, recall and a confusion matrix.
