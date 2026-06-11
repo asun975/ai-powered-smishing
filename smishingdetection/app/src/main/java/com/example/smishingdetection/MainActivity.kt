@@ -21,7 +21,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity() {
 
@@ -245,20 +244,33 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 when (riskCategory) {
                     "HIGH" -> {
-                        resultTextView.text = "⚠️ Detected High Risk of Smishing!\n\n${riskScore.roundToInt()}% Risk Score"
+                        resultTextView.text = "⚠️ Detected High Risk of Smishing!\n\n${
+                            String.format(
+                                "%2.0f", 
+                                riskScore
+                            )
+                        }% Risk Score"
                         resultTextView.setTextColor(getColor(android.R.color.holo_red_light))
                         explanationTextView.text = "💬 Getting explanation..."
                         explanationTextView.setTextColor(getColor(android.R.color.darker_gray))
                         Toast.makeText(this@MainActivity, "SMISHING DETECTED!", Toast.LENGTH_LONG).show()
                     }
                     "LOW" -> {
-                        resultTextView.text = "✅ Low Risk of Smishing\n\n${riskScore.roundToInt()}% Risk Score"
+                        resultTextView.text = "✅ Low Risk of Smishing\n\n${
+                            String.format(
+                                "%2.0f",
+                                riskScore
+                            )
+                        }% Risk Score"
                         resultTextView.setTextColor(getColor(android.R.color.holo_green_dark))
-                        explanationTextView.text = "💬 Getting explanation..."
-                        explanationTextView.setTextColor(getColor(android.R.color.darker_gray))
                     }
                     "MEDIUM" -> {
-                        resultTextView.text = "⚠️ Signs of Smishing Detected\n\n${riskScore.roundToInt()}% Risk Score"
+                        resultTextView.text = "⚠️ Signs of Smishing Detected\n\n${
+                            String.format(
+                                "%2.0f",
+                                riskScore
+                            )
+                        }% Risk Score"
                         resultTextView.setTextColor(getColor(android.R.color.holo_red_light))
                         explanationTextView.text = "💬 Getting explanation..."
                         explanationTextView.setTextColor(getColor(android.R.color.darker_gray))
@@ -267,15 +279,14 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // Call LLM for explanation
-            val explanation = explainer.explain(body, label, confidence)
-            Log.d("MainActivity", "Explanation: $explanation")
+            // Call LLM Explainer for High/Medium risk messages
+            if (riskCategory == "HIGH" || riskCategory == "MEDIUM") {
+                val explanation = explainer.explain(body, label, confidence)
+                Log.d("MainActivity", "Explanation: $explanation")
 
-            runOnUiThread {
-                explanationTextView.text = "💬 $explanation"
-                when (label) {
-                    "SPAM" -> explanationTextView.setTextColor(getColor(android.R.color.holo_red_light))
-                    "SAFE" -> explanationTextView.setTextColor(getColor(android.R.color.holo_green_dark))
+                runOnUiThread {
+                    explanationTextView.text = "💬 $explanation"
+                    explanationTextView.setTextColor(getColor(android.R.color.holo_red_light))
                 }
             }
 
