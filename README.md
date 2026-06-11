@@ -12,7 +12,7 @@ Our project is an Android application capable of performing real‑time analysis
 - 🛡️ **Quarantine simulation** for high‑risk messages
 - 🚫 **Blocking simulation** (UI‑level only; no OS‑level blocking)
 - 🔔 **User alerts** for suspicious content
-### Set-up Project
+## Set-up Project
 
 ```bash
 git clone https://github.com:asun975/ai-powered-smishing.git
@@ -37,7 +37,7 @@ This trains a base DistilBERT model on the SMS Spam Collection dataset and saves
 
 train_model.py provides additional training on URLs using a kaggle dataset for malicious URL detection. This model is saved to models/sms-spam-model-v2/
 
-#### Set-up Hugging Face Spaces API
+### Set-up Hugging Face Spaces API
 
 1. Create Huggingface Space Account: https://huggingface.co/spaces
 2. Create Huggingface Spaces for the classifier model and LLM
