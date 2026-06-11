@@ -210,14 +210,14 @@ class MainActivity : AppCompatActivity() {
     }
     private fun getRiskScore(label: String, confidence: Float): Pair<Float, String> {
         val riskScore = if (label == "SPAM") {
-            confidence * 100
+            confidence
         } else {
-            100 - confidence * 100
+            (1 - confidence)
         }
 
-        val riskCategory = if (riskScore > 75) {
+        val riskCategory = if (riskScore > 0.75) {
             "HIGH"
-        } else if (riskScore >= 30 ) {
+        } else if (riskScore >= 0.30 ) {
             "MEDIUM"
         } else {
             "LOW"
@@ -246,8 +246,8 @@ class MainActivity : AppCompatActivity() {
                     "HIGH" -> {
                         resultTextView.text = "⚠️ Detected High Risk of Smishing!\n\n${
                             String.format(
-                                "%2.0f", 
-                                riskScore
+                                "%2.2f", 
+                                riskScore * 100
                             )
                         }% Risk Score"
                         resultTextView.setTextColor(getColor(android.R.color.holo_red_light))
@@ -258,17 +258,18 @@ class MainActivity : AppCompatActivity() {
                     "LOW" -> {
                         resultTextView.text = "✅ Low Risk of Smishing\n\n${
                             String.format(
-                                "%2.0f",
-                                riskScore
+                                "%2.2f",
+                                riskScore * 100
                             )
                         }% Risk Score"
                         resultTextView.setTextColor(getColor(android.R.color.holo_green_dark))
+                        explanationTextView.text = ""
                     }
                     "MEDIUM" -> {
                         resultTextView.text = "⚠️ Signs of Smishing Detected\n\n${
                             String.format(
-                                "%2.0f",
-                                riskScore
+                                "%2.2f",
+                                riskScore * 100
                             )
                         }% Risk Score"
                         resultTextView.setTextColor(getColor(android.R.color.holo_red_light))
@@ -281,7 +282,7 @@ class MainActivity : AppCompatActivity() {
 
             // Call LLM Explainer for High/Medium risk messages
             if (riskCategory == "HIGH" || riskCategory == "MEDIUM") {
-                val explanation = explainer.explain(body, label, confidence)
+                val explanation = explainer.explain(body, label, riskScore)
                 Log.d("MainActivity", "Explanation: $explanation")
 
                 runOnUiThread {
