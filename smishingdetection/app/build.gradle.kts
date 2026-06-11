@@ -1,6 +1,16 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+}
+
+val appProperties = Properties()
+val appPropertiesFile = File(rootProject.rootDir, "app.properties")
+if (appPropertiesFile.exists() && appPropertiesFile.isFile) {
+    appPropertiesFile.inputStream().use {
+        appProperties.load(it)
+    }
 }
 
 android {
@@ -29,6 +39,16 @@ android {
                 "proguard-rules.pro"
             )
         }
+        debug {
+            buildConfigField("String",
+                "CLASSIFIER_API_URL",
+                appProperties.getProperty("CLASSIFIER_API_URL")
+            )
+            buildConfigField("String",
+                "LLM_API_URL",
+                appProperties.getProperty("LLM_API_URL")
+            )
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -36,6 +56,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

@@ -44,11 +44,11 @@ class MainActivity : AppCompatActivity() {
         resultTextView = findViewById(R.id.resultTextView)
         explanationTextView = findViewById(R.id.explanationTextView)
 
-        val apiUrl = "https://[username-model].hf.space/classify"
-        val llmUrl = "https://[username-space].hf.space/explain"  // NEW
+        val apiUrl = BuildConfig.CLASSIFIER_API_URL
+        val llmUrl = BuildConfig.LLM_API_URL
 
         classifier = SmishingClassifier(apiUrl)
-        explainer = LlmExplainer(llmUrl)                  // NEW
+        explainer = LlmExplainer(llmUrl)
 
         resultTextView.text = "⏳ Setting up..."
 
