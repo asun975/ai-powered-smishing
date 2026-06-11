@@ -224,10 +224,10 @@ __marimo__/
 # Ignore folders
 models/
 data/
+results/
+logs/
+plots/
 
 # Android Studio IDE
 /.idea/
 *.iml
-results/
-logs/
-plots/
