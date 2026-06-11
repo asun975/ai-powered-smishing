@@ -27,7 +27,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var smsTextView: TextView
     private lateinit var resultTextView: TextView
     private lateinit var classifier: SmishingClassifier
-    //private lateinit var preprocessor: SmsPreprocessor
     private var smsReceiver: BroadcastReceiver? = null
     private var smsObserver: ContentObserver? = null
     private var lastProcessedSmsId: String? = null
@@ -43,7 +42,7 @@ class MainActivity : AppCompatActivity() {
         resultTextView = findViewById(R.id.resultTextView)
 
         // Generated in Collab code
-        val apiURL = "https://[Username-model].hf.space/classify"
+        val apiURL = "https://[username-space].hf.space/classify"
         classifier = SmishingClassifier(apiURL)
 
         resultTextView.text = "Setting up"
@@ -139,7 +138,8 @@ class MainActivity : AppCompatActivity() {
                             val sender = sms.displayOriginatingAddress ?: "Unknown"
 
                             Log.d("MainActivity", "Broadcast detected: from $sender")
-                            processSmsMessage(sender, body, "BROADCAST")
+                            val (classifierInput, llmInput) = preprocessSmsMessage(body)
+                            processSmsMessage(sender, classifierInput, llmInput, "BROADCAST")
                         }
                     }
                 } catch (e: Exception) {
@@ -213,7 +213,8 @@ class MainActivity : AppCompatActivity() {
                     // Only process if this is a new SMS
                     if (smsId != null && smsId != lastProcessedSmsId) {
                         lastProcessedSmsId = smsId
-                        processSmsMessage(sender, body, "DATABASE")
+                        val (classifierInput, llmInput) = preprocessSmsMessage(body)
+                        processSmsMessage(sender, classifierInput, llmInput,"DATABASE")
                     }
                 }
             }
@@ -223,36 +224,51 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
+     * Preprocess SMS message for input to classifier and LLM
+     * Data sanitization: remove PII in classifier input and mask PII for LLM to keep context
+     * Remove unnecessary characters in classifier input to improve model performance
+    **/
+    private fun preprocessSmsMessage(body: String): Pair<String, String> {
+        val preprocessor = Preprocessing
+        val classifierInput = preprocessor.preprocessClassifierText(body)
+        val llmInput = preprocessor.preprocessLlmText(body)
+
+        Log.d("MainActivity", "---------- DATA CLEANING MODULE ----------")
+        Log.d("MainActivity", "Sanitization (classifier): $classifierInput")
+        Log.d("MainActivity", "PII masking (LLM): $llmInput")
+
+        return Pair(classifierInput, llmInput)
+    }
+
+    /**
      * Process SMS message (called by either broadcast OR database observer)
      * Log message and change UI for user
      * classify sms message
+     * TODO: use llmInput for LLM explainer API Integration
      */
-    private fun processSmsMessage(sender: String, body: String, source: String) {
-        val preprocessor = Preprocessing
-        // Data cleaning for DistilBERT classifier
-        val inputClassifier = preprocessor.cleanSms(body)
-        // Mask PII for LLM
-        val inputLLM = preprocessor.maskPII(body)
+    private fun processSmsMessage(sender: String,
+                                  classifierInput: String,
+                                  llmInput: String,
+                                  source: String) {
 
-        // Avoid logging unfiltered SMS body
+        // Do not log SMS text
         Log.d("MainActivity", "---------- PROCESSING SMS ($source) ----------")
         Log.d("MainActivity", "From: $sender")
-        Log.d("MainActivity", "Message after data cleaning for classifier: $inputClassifier")
-        Log.d("MainActivity", "Message after PII masking: $inputLLM")
 
         runOnUiThread {
-            smsTextView.text = "From: $sender\n\nMessage: $body\n\n(Detected via: $source)"
+            smsTextView.text = "From: $sender\n\nMessage: $llmInput\n\n(Detected via: $source)"
             resultTextView.text = "Analyzing..."
             Toast.makeText(this, "SMS Detected via $source!", Toast.LENGTH_SHORT).show()
         }
 
         lifecycleScope.launch {
-            classifyMessage(inputClassifier)
+            classifyMessage(classifierInput)
         }
     }
 
     /**
      * Classify the SMS message
+     * TODO: risk score and risk category from classifier output
      */
     private suspend fun classifyMessage(body: String) {
         Log.d("MainActivity", "========== CLASSIFICATION START ==========")
