@@ -18,7 +18,6 @@ The initial prototype focuses on individual modules only and does not represent 
 - 🛡️ **Quarantine simulation** for high‑risk messages
 - 🚫 **Blocking simulation** (UI‑level only; no OS‑level blocking)
 - 🔔 **User alerts** for suspicious content
-- 
 ### Set-up Project
 
 ```bash
