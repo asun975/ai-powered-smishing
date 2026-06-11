@@ -31,7 +31,7 @@ class Preprocessing {
             """[\uD83C-\uDBFF\uDC00-\uDFFF]"""
         )
         private val bankAccount = Regex("""\s[0-9]{9,18}\s""")
-        private val mfaCode = Regex("""[0-9]{6}""")
+        private val mfaCode = Regex("""[0-9]{6}""") // 6-digit MFA
         private val url = Regex("""(?i)\b((?:https?://|www\.)[^\s<>"']+)""")
         private val ipAddress = Regex("""[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}""")
         private val whitespaces = Regex("""\s+""")
@@ -69,7 +69,7 @@ class Preprocessing {
                 .replace(phone, "[PHONE]")
                 .replace(ipAddress, "[IP]")
                 .replace(bankAccount, "[ACCOUNT]")
-                .replace(mfaCode, "[6-DIGIT MFA]")
+                .replace(mfaCode, "[VERIFICATION CODE]")
                 .trim()
         }
     }
