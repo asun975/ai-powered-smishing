@@ -1,7 +1,8 @@
 # AI-Powered Smishing Detection
 
 Our project is an Android application capable of performing real‑time analysis of incoming SMS messages to detect potential smishing (SMS phishing) attempts. Incoming SMS messages are evaluated using a text classification API that assigns a dynamic risk score, and a Large Language Model (LLM) API will generate clear, human‑readable explanations describing why the message was flagged. Based on the assessed risk level, the app can trigger alerts, quarantine suspicious messages, or allow the user to block the sender.
-
+## Usage
+The current prototype requires Android Studio.
 ## Features
 ### Complete
 - 🔍 **Real‑time SMS scanning**
