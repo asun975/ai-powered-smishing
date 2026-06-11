@@ -107,6 +107,9 @@ https://www.kaggle.com/datasets/pilarpieiro/tabular-dataset-ready-for-malicious-
 ### Tiny Llama LLM
 https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0
 
+### Llama 4 Scout - Groq
+https://console.groq.com/docs/model/meta-llama/llama-4-scout-17b-16e-instruct
+
 ## Team
 - Rachna Alleear
 - Gustavo De Vera Teixeira
