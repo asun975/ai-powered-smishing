@@ -39,33 +39,30 @@ train_model.py provides additional training on URLs using a kaggle dataset for m
 2. Upload: app.py, requirements1.txt, Dockerfile
 3. Add secret: HF_TOKEN = your HF token
 4. Deploy (5-10 min build time)
-5. Update Android in MainActivity.kt: `val apiUrl = "https://[Username-ModelName].hf.space/classify"`
+5. Update Android in MainActivity.kt: `val apiUrl = "https://[Username-SpaceName].hf.space/classify"`
 
 API endpoint: POST /classify with {"text": "message"}
 Returns: {"label": "SPAM"/"SAFE", "confidence": 0.95}
-
+## Features (complete)
+- 🔒 **Data‑cleaning module** (text preprocessing and data sanitization)
 ## Features (in progress)
-
 - 🔍 **Real‑time SMS scanning**  
 - 🧠 **Risk scoring via classification API**  
 - 💬 **LLM‑generated explanations** for flagged messages  
 - 🛡️ **Quarantine simulation** for high‑risk messages  
 - 🚫 **Blocking simulation** (UI‑level only; no OS‑level blocking)  
 - 🔔 **User alerts** for suspicious content  
-- 🔒 **Data‑cleaning module** (remove sensitive data and PII)
 
 ## Project Structure
 
 ```
 .
-├── app/
-│   ├── AndroidManifest.xml
-│   ├── MainActivity.kt
-│   └── activity_main.xml
+├── smishingdetection
 ├── src/
 │   ├── distilbert_model_prototype.py
+│   ├── preprocessing.py
 │   ├── test_model.py
-│   ├── tinyllama.py
+│   ├── test_preprocessing.py
 │   └── train_model.py
 ├── .gitignore
 ├── README.md
