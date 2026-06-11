@@ -80,20 +80,26 @@ POST /explain
 ## Project Structure
 ```
 .
+├── hugging-face/
+│   ├── distilbert/
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
+│   └── groq-llama/
+│       ├── app.py
+│       ├── Dockerfile
+│       └── requirements.txt
 ├── smishingdetection
 ├── src/
 │   ├── distilbert_model_prototype.py
+│   ├── prepare_data_nlp.py
 │   ├── preprocessing.py
-├── src/
-│   ├── distilbert_model_prototype.py
-│   ├── prepare_data.py
 │   ├── test_model.py
 │   ├── test_preprocessing.py
 │   └── train_model.py
 ├── .gitignore
-├── README,md
-├── requirements.txt
-└── test_samples.csv
+├── README.md
+└── requirements.txt
 ```
 
 ## Known issues or limitations
