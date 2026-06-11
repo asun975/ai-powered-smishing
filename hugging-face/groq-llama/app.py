@@ -5,7 +5,7 @@ import os
 app = Flask(__name__)
 
 # Groq client — reads API key from environment secret
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+GROQ_API_KEY = os.environ.get("HF_TOKEN")
 client = Groq(api_key=GROQ_API_KEY)
 
 # Groq's hosted Gemma 2b model name
