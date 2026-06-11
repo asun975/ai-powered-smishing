@@ -33,6 +33,17 @@ This trains a base DistilBERT model on the SMS Spam Collection dataset and saves
 
 train_model.py provides additional training on URLs using a kaggle dataset for malicious URL detection. This model is saved to models/sms-spam-model-v2/
 
+#### Set-up Classifier API
+
+1. Create Huggingface Space Account: https://huggingface.co/spaces
+2. Upload: app.py, requirements1.txt, Dockerfile
+3. Add secret: HF_TOKEN = your HF token
+4. Deploy (5-10 min build time)
+5. Update Android in MainActivity.kt: `val apiUrl = "https://[Username-ModelName].hf.space/classify"`
+
+API endpoint: POST /classify with {"text": "message"}
+Returns: {"label": "SPAM"/"SAFE", "confidence": 0.95}
+
 ## Features (in progress)
 
 - 🔍 **Real‑time SMS scanning**  
