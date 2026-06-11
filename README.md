@@ -8,6 +8,17 @@ The initial prototype focuses on individual modules only and does not represent 
 - Classifier (DistilBERT) model trained in message text and URL that classifies SMS text as smishing or benign and assigns a risk score to the message.
 - LLM (TinyLlama) provides a human-readable explanation of a sample message and risk score
 
+## Features
+### Complete
+- 🔍 **Real‑time SMS scanning**
+- 🧠 **Risk scoring via classification API**
+- 💬 **LLM‑generated explanations** for flagged messages
+### In Progress
+- 🔒 **Data‑cleaning module** (remove Personally Identifiable Information (PII) and text preprocessing)
+- 🛡️ **Quarantine simulation** for high‑risk messages
+- 🚫 **Blocking simulation** (UI‑level only; no OS‑level blocking)
+- 🔔 **User alerts** for suspicious content
+- 
 ### Set-up Project
 
 ```bash
@@ -44,28 +55,26 @@ train_model.py provides additional training on URLs using a kaggle dataset for m
 API endpoint: POST /classify with {"text": "message"}
 Returns: {"label": "SPAM"/"SAFE", "confidence": 0.95}
 
-## Features (in progress)
+#### Set-up LLM API
 
-- 🔍 **Real‑time SMS scanning**  
-- 🧠 **Risk scoring via classification API**  
-- 💬 **LLM‑generated explanations** for flagged messages  
-- 🛡️ **Quarantine simulation** for high‑risk messages  
-- 🚫 **Blocking simulation** (UI‑level only; no OS‑level blocking)  
-- 🔔 **User alerts** for suspicious content  
-- 🔒 **Data‑cleaning module** (remove sensitive data and PII)
+1. Create Huggingface Space Account: https://huggingface.co/spaces
+2. Upload: app.py, requirements.txt, Dockerfile
+3. Add secret: HF_TOKEN = your HF token
+4. Deploy (5-10 min build time)
+5. Update in MainActivity.kt
 
+**API endpoint: POST /explain**<
+- Expects: JSON {"text": "cleaned SMS text", "classification": "SPAM" or "SAFE", "risk_score": 0.87 }
+- Returns: JSON { "explanation": explanation, "classification": classification, "risk_score": risk_score, "version": "model_version"}
 ## Project Structure
-
 ```
 .
-├── app/
-│   ├── AndroidManifest.xml
-│   ├── MainActivity.kt
-│   └── activity_main.xml
+├── smishingdetection
 ├── src/
 │   ├── distilbert_model_prototype.py
+│   ├── preprocessing.py
 │   ├── test_model.py
-│   ├── tinyllama.py
+│   ├── test_preprocessing.py
 │   └── train_model.py
 ├── .gitignore
 ├── README.md
