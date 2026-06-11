@@ -3,7 +3,7 @@
 Our project is an Android application capable of performing real‑time analysis of incoming SMS messages to detect potential smishing (SMS phishing) attempts. Incoming SMS messages are evaluated using a text classification API that assigns a dynamic risk score, and a Large Language Model (LLM) API will generate clear, human‑readable explanations describing why the message was flagged. Based on the assessed risk level, the app can trigger alerts, quarantine suspicious messages, or allow the user to block the sender.
 
 ## Usage
-The initial prototype focuses on individual modules only and does not represent a complete end‑to‑end use case. 
+The current prototype focuses on individual modules only and does not represent a complete end‑to‑end use case. 
 - Implemented broadcast receiver to read incoming messages using an emulator
 - Classifier (DistilBERT) model trained in message text and URL that classifies SMS text as smishing or benign and assigns a risk score to the message.
 - LLM (TinyLlama) provides a human-readable explanation of a sample message and risk score
@@ -43,28 +43,35 @@ This trains a base DistilBERT model on the SMS Spam Collection dataset and saves
 
 train_model.py provides additional training on URLs using a kaggle dataset for malicious URL detection. This model is saved to models/sms-spam-model-v2/
 
-#### Set-up Classifier API
+#### Set-up Hugging Face Spaces API
 
 1. Create Huggingface Space Account: https://huggingface.co/spaces
-2. Upload: app.py, requirements1.txt, Dockerfile
-3. Add secret: HF_TOKEN = your HF token
+2. Create Huggingface Spaces for the classifier model and LLM
+3. Update app.py from hugging-face/groq-llama and hugging-face/distilbert
+- Add secret: HF_TOKEN = your HF token
 4. Deploy (5-10 min build time)
-5. Update Android in MainActivity.kt: `val apiUrl = "https://[Username-ModelName].hf.space/classify"`
+5. Create app.properties in smishingdetection project root. Make sure app.properties is added to your .gitignore
 
-API endpoint: POST /classify with {"text": "message"}
-Returns: {"label": "SPAM"/"SAFE", "confidence": 0.95}
+```
+## This file loads your custom API urls for the classifier model and LLM
+#
+# This file should *NOT* be checked into Version Control Systems,
+# as it contains information specific to your local configuration.
 
-#### Set-up LLM API
+CLASSIFIER_API_URL = "your api URL for classifier"
+LLM_API_URL = "your api URL for LLM"
+```
 
-1. Create Huggingface Space Account: https://huggingface.co/spaces
-2. Upload: app.py, requirements.txt, Dockerfile
-3. Add secret: HF_TOKEN = your HF token
-4. Deploy (5-10 min build time)
-5. Update in MainActivity.kt
+**Classifier API Endpoint**
+POST /classify
+- Expects: JSON {"text": "message"}
+- Returns: {"label": "SPAM"/"SAFE", "confidence": 0.95}
 
-**API endpoint: POST /explain**<
+**LLM API Endpoint** 
+POST /explain
 - Expects: JSON {"text": "cleaned SMS text", "classification": "SPAM" or "SAFE", "risk_score": 0.87 }
 - Returns: JSON { "explanation": explanation, "classification": classification, "risk_score": risk_score, "version": "model_version"}
+
 ## Project Structure
 ```
 .
