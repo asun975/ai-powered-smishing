@@ -32,29 +32,35 @@ class Preprocessing {
         )
         private val bankAccount = Regex("""\s[0-9]{9,18}\s""")
         private val mfaCode = Regex("""[0-9]{6}""")
-        private val url = Regex("""http\S+""")
+        private val url = Regex("""(?i)\b((?:https?://|www\.)[^\s<>"']+)""")
         private val ipAddress = Regex("""[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}""")
         private val whitespaces = Regex("""\s+""")
         private val punctuation = Regex("\\p{Punct}")
 
-        // Remove PII
-        // url is not removed because model is trained on url strings
-        fun blockPII(message: String): String {
-            return message
-                .replace(email, "")
-                .replace(creditCard, "")
-                .replace(sin, "")
-                .replace(ssn, "")
-                .replace(phone, "")
-                .replace(ipAddress, "")
-                .replace(bankAccount, "")
-                .replace(mfaCode, "")
-                .trim()
+        // Remove Personally Identifiable Information (PII)
+        private fun removeSensitiveData(text: String): String {
+            val patterns = listOf(
+                phone, email, creditCard, sin, ssn, ipAddress, bankAccount, mfaCode, url
+            )
+            return patterns.fold(text) { result, regex ->
+                regex.replace(result, "")
+            }
         }
 
-        // Mask Personal Identifiable Information (PII) for LLM
-        fun maskPII(message: String): String {
-            return message
+        // Removes PII
+        // text preprocessing remove emoji unicode characters, punctuation and extra whitespace
+        fun preprocessClassifierText(text: String): String {
+            val textInput = removeSensitiveData(text).lowercase()
+                .replace(emoji, "")
+                .replace(punctuation, " ") // prevent words from joining
+                .replace(whitespaces, " ") // remove extra whitespaces
+                .trim()
+            return textInput
+        }
+
+        // Replace PII in SMS text with placeholder to keep context
+        fun preprocessLlmText(text: String): String {
+            return text
                 .replace(email, "[EMAIL]")
                 .replace(url, "[URL]")
                 .replace(creditCard, "[CARD")
@@ -64,16 +70,6 @@ class Preprocessing {
                 .replace(ipAddress, "[IP]")
                 .replace(bankAccount, "[ACCOUNT]")
                 .replace(mfaCode, "[6-DIGIT MFA]")
-                .trim()
-        }
-
-        // Data cleaning
-        //todo preserve urls during text preprocessing
-        fun cleanSms(message: String): String {
-            return blockPII(message)
-                .replace(emoji, "")
-                .replace(punctuation, "")
-                .replace(whitespaces, " ")
                 .trim()
         }
     }
