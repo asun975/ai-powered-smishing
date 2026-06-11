@@ -14,7 +14,7 @@ The current prototype focuses on individual modules only and does not represent 
 - 🧠 **Risk scoring via classification API**
 - 💬 **LLM‑generated explanations** for flagged messages
 ### In Progress
-- 🔒 **Data‑cleaning module** (remove Personally Identifiable Information (PII) and text preprocessing)
+- 🔒 **Data‑cleaning module** (text preprocessing and data sanitization)
 - 🛡️ **Quarantine simulation** for high‑risk messages
 - 🚫 **Blocking simulation** (UI‑level only; no OS‑level blocking)
 - 🔔 **User alerts** for suspicious content
