@@ -254,6 +254,7 @@ class MainActivity : AppCompatActivity() {
         // Do not log SMS text
         Log.d("MainActivity", "---------- PROCESSING SMS ($source) ----------")
         Log.d("MainActivity", "From: $sender")
+        Log.d("MainActivity", "Text: $classifierInput")
 
         runOnUiThread {
             smsTextView.text = "From: $sender\n\nMessage: $llmInput\n\n(Detected via: $source)"
