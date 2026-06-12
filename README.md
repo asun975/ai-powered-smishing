@@ -2,28 +2,7 @@
 
 Our project is an Android application capable of performing real‑time analysis of incoming SMS messages to detect potential smishing (SMS phishing) attempts. Incoming SMS messages are evaluated using a text classification API that assigns a dynamic risk score, and a Large Language Model (LLM) API will generate clear, human‑readable explanations describing why the message was flagged. Based on the assessed risk level, the app can trigger alerts, quarantine suspicious messages, or allow the user to block the sender.
 
-## Features
-### Complete
-- 🔍 **Real‑time SMS scanning**
-- 🧠 **Risk scoring via classification API**
-- 💬 **LLM‑generated explanations** for flagged messages
-### In Progress
-- 🔒 **Data‑cleaning module** (text preprocessing and data sanitization)
-- 🛡️ **Quarantine simulation** for high‑risk messages
-- 🚫 **Blocking simulation** (UI‑level only; no OS‑level blocking)
-- 🔔 **User alerts** for suspicious content
-
-### Model Evaluation:
-The detection model, sms-spam-model-v2, was tested using benign and smishing messages from the Kaggle dataset SMS Smishing Collection Data Set, and SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION dataset from Mendeley. The test dataset was preprocessed and sanitized to closely replicate the real conditions of SMS messages passed into our model
-
-We evaluated the model using scikit learn metrics for accuracy, F1 score, precision, recall and a confusion matrix.
-- **Accuracy**: 94.6%
-- **F1 Score**: 96.0%
-- **Precision**: 94.5%
-- **Recall**: 97.6%
-
-## Usage
-### Set-up Project
+## Set-up
 
 ```bash
 git clone https://github.com:asun975/ai-powered-smishing.git
@@ -49,15 +28,7 @@ This trains a base DistilBERT model on the SMS Spam Collection dataset and saves
 
 train_model.py provides additional training on URLs using a kaggle dataset for malicious URL detection. This model is saved to models/sms-spam-model-v2/
 
-### Model Evaluation:
-The detection model, sms-spam-model-v2, was tested using benign and smishing messages from the Kaggle dataset SMS Smishing Collection Data Set, and SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION dataset from Mendeley. The model was evaluated on 1000 samples using scikit learn metrics for accuracy, F1 score, precision, recall and a confusion matrix.
-- **Accuracy**: 95%
-- **F1 Score**: 96%
-- **Precision**: 94%
-- **Recall**: 98%
-
-### Set-up Hugging Face Spaces API
-#### Set-up Classifier API
+## Model APIs
 1. Create Huggingface Space Account: https://huggingface.co/spaces
 2. Create Huggingface Spaces for the classifier model and LLM
 3. Update app.py from hugging-face/groq-llama and hugging-face/distilbert
@@ -74,16 +45,60 @@ The detection model, sms-spam-model-v2, was tested using benign and smishing mes
 CLASSIFIER_API_URL = "your api URL for classifier"
 LLM_API_URL = "your api URL for LLM"
 ```
+### Endpoints
+hugging-face/distilbert
+| Method | Path | Description |
+|---|---|---|
+| GET | `/` | Check if the server is running |
+| POST | `/classify` | Analyze an SMS message for smishing |
 
-**Classifier API Endpoint**
-POST /classify
-- Expects: JSON {"text": "message"}
-- Returns: {"label": "SPAM"/"SAFE", "confidence": 0.95}
+hugging-face/groq-llama
+| Method | Path | Description |
+|---|---|---|
+| GET | `/` | Check if the server is running |
+| POST | `/explain` | Returns a explanation describing signs of smishing in an SMS message |
+### Example Request/Response
+hugging-face/distilbert
+```JSON
+{"text": "message"}
+{"label": "SPAM", "confidence": 0.95}
+```
 
-**LLM API Endpoint** 
-POST /explain
-- Expects: JSON {"text": "cleaned SMS text", "classification": "SPAM" or "SAFE", "risk_score": 0.87 }
-- Returns: JSON { "explanation": explanation, "classification": classification, "risk_score": risk_score, "version": "model_version"}
+hugging-face/groq-llama
+```JSON
+{
+    "text": "cleaned SMS text", 
+    "classification": "SPAM" or "SAFE"
+    "risk_score": 0.87 
+}
+
+{ 
+    "explanation": explanation, 
+    "classification": classification, 
+    "risk_score": risk_score, 
+    "version": "model_version"
+}
+```
+
+## Features
+### Complete
+- 🔍 **Real‑time SMS scanning**
+- 🧠 **Risk scoring via classification API**
+- 💬 **LLM‑generated explanations** for flagged messages
+### In Progress
+- 🔒 **Data‑cleaning module** (text preprocessing and data sanitization)
+- 🛡️ **Quarantine simulation** for high‑risk messages
+- 🚫 **Blocking simulation** (UI‑level only; no OS‑level blocking)
+- 🔔 **User alerts** for suspicious content
+
+### Model Evaluation:
+The detection model, sms-spam-model-v2, was tested using benign and smishing messages from the Kaggle dataset SMS Smishing Collection Data Set, and SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION dataset from Mendeley. The test dataset was preprocessed and sanitized to closely replicate the real conditions of SMS messages passed into our model
+
+We evaluated the model using scikit learn metrics for accuracy, F1 score, precision, recall and a confusion matrix.
+- **Accuracy**: 94.6%
+- **F1 Score**: 96.0%
+- **Precision**: 94.5%
+- **Recall**: 97.6%
 
 ## Project Structure
 ```
