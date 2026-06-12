@@ -1,24 +1,24 @@
 package com.example.smishingdetection
 
-import android.Manifest
 import android.content.BroadcastReceiver
+import android.content.pm.PackageManager
+import android.database.ContentObserver
+import android.os.Bundle
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import android.util.Log
+import androidx.core.content.ContextCompat
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
-import android.database.ContentObserver
 import android.database.Cursor
 import android.os.Build
-import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Telephony
-import android.util.Log
-import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
@@ -28,7 +28,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var resultTextView: TextView
     private lateinit var explanationTextView: TextView
     private lateinit var classifier: SmishingClassifier
-    private lateinit var explainer: LlmExplainer          // NEW
+    private lateinit var explainer: LlmExplainer
     private var smsReceiver: BroadcastReceiver? = null
     private var smsObserver: ContentObserver? = null
     private var lastProcessedSmsId: String? = null
@@ -57,18 +57,23 @@ class MainActivity : AppCompatActivity() {
     private fun requestPermissions() {
         Log.d("MainActivity", "Checking permissions...")
 
+        Log.d("MainActivity", "Checking permissions")
+        // List of permissions to request
         val permissionsNeeded = mutableListOf<String>()
 
+        // Check app permission for receiving SMS
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
             != PackageManager.PERMISSION_GRANTED) {
             permissionsNeeded.add(Manifest.permission.RECEIVE_SMS)
         }
 
+        // Check app permission for reading SMS
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS)
             != PackageManager.PERMISSION_GRANTED) {
             permissionsNeeded.add(Manifest.permission.READ_SMS)
         }
 
+        // Check app permission for post notifications
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -87,7 +92,8 @@ class MainActivity : AppCompatActivity() {
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray
-    ) {
+    )
+    {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
         if (requestCode == 999) {
@@ -101,6 +107,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Start BOTH broadcast receiver AND database observer
+     */
     private fun startBothDetectionMethods() {
         Log.d("MainActivity", "========== STARTING DUAL DETECTION ==========")
         resultTextView.text = "✅ Ready! Waiting for SMS..."
@@ -125,7 +134,9 @@ class MainActivity : AppCompatActivity() {
                             val sender = sms.displayOriginatingAddress ?: "Unknown"
 
                             Log.d("MainActivity", "Broadcast detected: from $sender")
-                            processSmsMessage(sender, body, "BROADCAST")
+
+                            val (classifierInput, llmInput) = preprocessSmsMessage(body)
+                            processSmsMessage(sender, classifierInput, llmInput, "BROADCAST")
                         }
                     }
                 } catch (e: Exception) {
@@ -185,7 +196,8 @@ class MainActivity : AppCompatActivity() {
 
                     if (smsId != null && smsId != lastProcessedSmsId) {
                         lastProcessedSmsId = smsId
-                        processSmsMessage(sender, body, "DATABASE")
+                        val (classifierInput, llmInput) = preprocessSmsMessage(body)
+                        processSmsMessage(sender, classifierInput, llmInput,"DATABASE")
                     }
                 }
             }
@@ -194,19 +206,46 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun processSmsMessage(sender: String, body: String, source: String) {
+    /**
+     * Preprocess SMS message for input to classifier and LLM
+     * Data sanitization: remove PII in classifier input and mask PII for LLM to keep context
+     * Remove unnecessary characters in classifier input to improve model performance
+    **/
+    private fun preprocessSmsMessage(body: String): Pair<String, String> {
+        val preprocessor = Preprocessing
+        val classifierInput = preprocessor.preprocessClassifierText(body)
+        val llmInput = preprocessor.preprocessLlmText(body)
+
+        return Pair(classifierInput, llmInput)
+    }
+
+    /**
+     * Process SMS message (called by either broadcast OR database observer)
+     * Log message and change UI for user
+     * classify sms message
+     */
+    private fun processSmsMessage(
+        sender: String,
+        classifierInput: String,
+        llmInput: String,
+        source: String
+    ) {
+
+        // Do not log SMS text
         Log.d("MainActivity", "---------- PROCESSING SMS ($source) ----------")
         Log.d("MainActivity", "From: $sender")
-        Log.d("MainActivity", "Message: $body")
+        Log.d("MainActivity", "PII removed (classifier): $classifierInput")
+        Log.d("MainActivity", "PII masked (LLM): $llmInput")
 
         runOnUiThread {
-            smsTextView.text = "From: $sender\n\nMessage: $body"
+            smsTextView.text = "From: $sender\n\nMessage: $llmInput"
             resultTextView.text = "🔍 Analyzing..."
         }
 
         lifecycleScope.launch {
-            classifyMessage(body)
+            classifyMessage(classifierInput, llmInput)
         }
+        Log.d("MainActivity", "========== PROCESSING SMS END ==========")
     }
     private fun getRiskScore(label: String, confidence: Float): Pair<Float, String> {
         val riskScore = if (label == "SPAM") {
@@ -224,14 +263,15 @@ class MainActivity : AppCompatActivity() {
         }
         return Pair(riskScore, riskCategory)
     }
-    private suspend fun classifyMessage(body: String) {
-        Log.d("MainActivity", "========== CLASSIFICATION START ==========")
+    private suspend fun classifyMessage(classifierInput: String, llmInput: String) {
+
         try {
-            val (label, confidence) = classifier.classify(body)
+            Log.d("MainActivity", "========== CLASSIFICATION START ==========")
+            val (label, confidence) = classifier.classify(classifierInput)
             val (riskScore, riskCategory) = getRiskScore(label, confidence)
 
             Log.d("MainActivity", "Result: $label ($riskScore%)")
-
+            Log.d("MainActivity", "========== CLASSIFICATION END ==========")
             if (label == "ERROR") {
                 runOnUiThread {
                     resultTextView.text = "❌ Error analyzing\nCheck internet"
@@ -282,7 +322,7 @@ class MainActivity : AppCompatActivity() {
 
             // Call LLM Explainer for High/Medium risk messages
             if (riskCategory == "HIGH" || riskCategory == "MEDIUM") {
-                val explanation = explainer.explain(body, label, riskScore)
+                val explanation = explainer.explain(llmInput, label, riskScore)
                 Log.d("MainActivity", "Explanation: $explanation")
 
                 runOnUiThread {
@@ -297,7 +337,6 @@ class MainActivity : AppCompatActivity() {
                 resultTextView.text = "❌ Error: ${e.message}"
             }
         }
-        Log.d("MainActivity", "========== CLASSIFICATION END ==========")
     }
 
     override fun onDestroy() {
