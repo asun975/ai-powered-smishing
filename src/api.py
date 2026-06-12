@@ -1,8 +1,9 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from pipeline import analyze_sms
 
@@ -16,6 +17,21 @@ MAX_MESSAGE_LENGTH = 1000
 
 # ── App setup ──────────────────────────────────────────────────────────────────
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        from distilbert_model import predict  # noqa: F401 — import triggers model load
+        logger.info("DistilBERT model loaded and ready.")
+    except FileNotFoundError:
+        logger.error(
+            "DistilBERT model files not found at models/distilbert/. "
+            "Run src/train_model.py to train and save the model first."
+        )
+    except Exception as e:
+        logger.warning(f"Model pre-load warning (may still work at request time): {e}")
+    yield
+
+
 app = FastAPI(
     title="AI-Powered Smishing Detection API",
     description=(
@@ -23,6 +39,7 @@ app = FastAPI(
         "combined with rule-based scoring for suspicious keywords, URLs, and brand mismatches."
     ),
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Allow requests from the Android app (adjust origins in production)
@@ -37,14 +54,15 @@ app.add_middleware(
 # ── Request / Response Models ──────────────────────────────────────────────────
 
 class SMSRequest(BaseModel):
-    message: str
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "message": "URGENT: Your bank account has been locked. Verify now: http://secure-login.xyz"
             }
         }
+    )
+
+    message: str
 
 
 class SMSResponse(BaseModel):
@@ -63,27 +81,6 @@ class SMSResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     version: str
-
-
-# ── Startup: warm-up model load ────────────────────────────────────────────────
-
-@app.on_event("startup")
-async def startup_event():
-    """
-    Force-load the DistilBERT model when the server starts so the first real
-    request doesn't pay the cold-start penalty.  Logs a clear error if the
-    model files are missing (user needs to run train_model.py first).
-    """
-    try:
-        from distilbert_model import predict  # noqa: F401  — import triggers model load
-        logger.info("DistilBERT model loaded and ready.")
-    except FileNotFoundError:
-        logger.error(
-            "DistilBERT model files not found at models/distilbert/. "
-            "Run src/train_model.py to train and save the model first."
-        )
-    except Exception as e:
-        logger.warning(f"Model pre-load warning (may still work at request time): {e}")
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────

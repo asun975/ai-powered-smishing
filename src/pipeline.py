@@ -7,8 +7,13 @@ from preprocessing import clean_for_distilbert, clean_for_llm, should_skip
 
 # Known trusted domains for demo purposes.
 TRUSTED_DOMAINS = [
-    "cibc.com", "scotiabank.com", "td.com", "rbc.com",
-    "instagram.com", "paypal.com", "amazon.com", "apple.com", "netflix.com"
+    "cibc.com", "scotiabank.com", "td.com", "rbc.com", "bmo.com", "hsbc.com",
+    "instagram.com", "paypal.com", "amazon.com", "apple.com", "netflix.com",
+    "google.com", "youtube.com", "microsoft.com", "outlook.com", "office.com",
+    "facebook.com", "twitter.com", "x.com", "linkedin.com", "tiktok.com",
+    "walmart.com", "bestbuy.com", "ebay.com", "shopify.com",
+    "canada.ca", "gov.on.ca", "cra-arc.gc.ca",
+    "ups.com", "fedex.com", "canadapost.ca", "dhl.com",
 ]
 
 BRAND_DOMAINS = {

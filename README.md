@@ -1,183 +1,254 @@
 # AI-Powered Smishing Detection
 
-This repository contains a hybrid SMS phishing detection system built for a course project. It combines a fine-tuned DistilBERT classifier with rule-based URL and keyword analysis, then generates a short plain-English explanation for the user.
+A hybrid SMS phishing detection system combining a fine-tuned DistilBERT classifier, rule-based URL/keyword scoring, and a plain-English LLM explanation — served via a FastAPI backend and consumed by an Android app.
 
-## What this version improves
+## Team
 
-This merged version keeps the strongest parts from the team branches:
-- **Yugveer branch:** clean repo structure, training pipeline, local model loading, preprocessing, API edge case handling
-- **Gustavo branch:** better training metrics and clearer label handling
-- **Rachna branch:** risk-score and end-user explanation idea
-- **Ashley contribution:** explanation module concept
+- **Yugveer Singh Sidhu**
+- Gustavo De Vera Teixeira
+- Rachna Alleear
+- Ashley Sun
 
-## Project structure
+---
+
+## Project Structure
 
 ```text
 ai-powered-smishing/
 ├── app/
-│   ├── MainActivity.kt
-│   ├── AndroidManifest.xml
-│   └── activity_main.xml
+│   ├── MainActivity.kt          ← SMS receiver + API call + DB cache
+│   ├── DatabaseHelper.kt        ← SQLite DB (stores all analyzed messages)
+│   ├── AndroidManifest.xml      ← Permissions (RECEIVE_SMS, INTERNET)
+│   ├── activity_main.xml        ← UI layout
+│   └── src/                     ← Full Android Studio source tree
 ├── data/
-│   └── spam.csv
+│   └── spam.csv                 ← Training dataset
+├── models/
+│   └── distilbert/              ← Trained model (not committed — train locally)
 ├── src/
-│   ├── api.py
-│   ├── distilbert_model.py
-│   ├── llm_explainer.py
-│   ├── pipeline.py
-│   ├── preprocessing.py
-│   ├── tinyllama.py
-│   └── train_model.py
+│   ├── api.py                   ← FastAPI server
+│   ├── distilbert_model.py      ← DistilBERT inference
+│   ├── llm_explainer.py         ← Plain-English explanation generator
+│   ├── pipeline.py              ← Main analyze_sms() orchestrator
+│   ├── preprocessing.py         ← PII stripping, media/trivial filtering
+│   ├── tinyllama.py             ← TinyLlama prototype (not wired in yet)
+│   └── train_model.py           ← DistilBERT fine-tuning script
 ├── requirements.txt
 ├── .gitignore
 └── README.md
 ```
 
+---
+
 ## Setup
+
+### 1. Install Python dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Train the model
+### 2. Train the DistilBERT model
 
 ```bash
 python src/train_model.py
 ```
 
-This saves the trained model locally to `models/distilbert/`. The model is not committed to the repo because of its file size — you must train it locally after cloning.
+Saves the trained model to `models/distilbert/`. The model is not committed to the repo due to file size — you must train it locally after cloning.
 
-## Run the detector (CLI)
+---
 
-```bash
-python src/pipeline.py
-```
-
-Runs six built-in example messages then opens an interactive prompt where you can type any SMS and see the result:
-
-```
-SMS > Your CIBC account is locked. Verify now: http://secure-cibc.xyz
-
-  Cleaned     : Your [PHONE] account is locked. Verify now: http://secure-cibc.xyz
-  Prediction  : SPAM
-  Final Score : 82.0 / 100
-  ML (SPAM, conf 97.50%)  Rule score: 70
-  Explanation : This message has multiple suspicious signals...
-```
-
-## Run the API server
+## Running the API Server
 
 ```bash
 python src/api.py
 ```
 
-Starts a FastAPI server on `http://0.0.0.0:8000`. The Android app connects to this server to analyze incoming SMS messages.
+Starts a FastAPI server on `http://0.0.0.0:8000`.
+
+> **Note:** On Windows you may need to allow port 8000 through the firewall:
+> ```powershell
+> New-NetFirewallRule -DisplayName "Allow FastAPI 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow
+> ```
 
 ### Endpoints
 
 | Method | Path | Description |
 |---|---|---|
 | GET | `/health` | Check if the server is running |
-| POST | `/analyze` | Analyze an SMS message |
+| POST | `/analyze` | Analyze an SMS message for smishing |
 
-### Example request
+### Interactive API Docs
+
+Open `http://localhost:8000/docs` in your browser to test all endpoints via Swagger UI.
+
+### Example Request
 
 ```bash
 curl -X POST http://localhost:8000/analyze \
   -H "Content-Type: application/json" \
-  -d '{"message": "URGENT: Your bank account has been locked. Verify now: http://secure-login.xyz"}'
+  -d '{"message": "URGENT: Your CIBC account has been locked. Verify now: http://secure-cibc.xyz"}'
 ```
 
-### Example response
+### Example Response
 
 ```json
 {
-  "message": "URGENT: Your bank account has been locked. Verify now: http://secure-login.xyz",
+  "message": "URGENT: Your CIBC account has been locked. Verify now: http://secure-cibc.xyz",
   "prediction": "SPAM",
-  "risk_score": 82.0,
+  "risk_score": 99.9,
   "ml_prediction": "SPAM",
-  "ml_confidence": 0.975,
-  "ml_score": 100.0,
-  "rule_score": 50.0,
-  "explanation": "This message has multiple suspicious signals...",
+  "ml_confidence": 0.9983,
+  "ml_score": 99.83,
+  "rule_score": 100.0,
+  "explanation": "This message is highly suspicious and likely a smishing attempt. It contains suspicious wording such as: urgent, verify, locked. It includes link(s): secure-cibc.xyz.",
   "skipped": false,
   "skip_reason": ""
 }
 ```
 
-### API edge cases handled (SCRUM-35)
+### API Edge Cases (SCRUM-35)
 
 | Input | Response |
 |---|---|
-| Empty or whitespace message | 400 — Message cannot be empty |
-| Message over 1000 characters | 400 — Message too long |
-| Media-only or trivial message (e.g. "ok", "[Image]") | `skipped: true`, `prediction: SAFE`, `risk_score: 0` |
-| Model files not found on server | 503 — Model not available |
-| Unexpected server error | 500 — Internal server error (details logged server-side only) |
+| Empty or whitespace message | `400` — Message cannot be empty |
+| Message over 1000 characters | `400` — Message too long |
+| Media-only message (`[Image]`) | `skipped: true`, `prediction: SAFE`, `risk_score: 0` |
+| Trivial message (`"ok"`, `"hey"`) | `skipped: true`, `prediction: SAFE`, `risk_score: 0` |
+| Model files not found | `503` — Model not available (run `train_model.py` first) |
+| Unexpected server error | `500` — Internal error (full traceback logged server-side only) |
 
-## Data Cleaning & Preprocessing (Week 3 — Yugveer)
+---
 
-Before any message reaches the ML model or LLM explainer, it goes through a preprocessing pipeline in `src/preprocessing.py`.
+## Running the Detector (CLI)
 
-### What gets filtered out
+```bash
+python src/pipeline.py
+```
 
-| Type | Example | Result |
+Runs built-in example messages then opens an interactive prompt:
+
+```
+SMS > Your CIBC account is locked. Verify now: http://secure-cibc.xyz
+
+  Prediction  : SPAM
+  Final Score : 99.9 / 100
+  ML (SPAM, conf 99.83%)  Rule score: 100
+  Explanation : This message is highly suspicious...
+```
+
+---
+
+## Android App (SCRUM-43)
+
+The `app/` folder contains the full Android Studio project source.
+
+### Setup in Android Studio
+
+1. Open Android Studio → **Open** → select `C:\Users\yugve\AndroidStudioProjects\SmishingDetector`
+2. Wait for Gradle to sync
+3. Make sure the Python API is running on your PC (`python src/api.py`)
+4. Add the Windows firewall rule (see above)
+5. Click the green **Run** button → select your emulator
+
+### Testing with the Emulator
+
+1. Start the emulator (Pixel 6, API 37)
+2. In Android Studio → emulator `...` menu → **Phone** → **SMS tab**
+3. Enter a phone number and message → click **Send**
+4. The app will display the SPAM/SAFE verdict, risk score, and explanation
+
+### How it Works
+
+```
+Incoming SMS → BroadcastReceiver (MainActivity.kt)
+     ↓
+Check local SQLite DB (cache hit? → show instantly, no API call)
+     ↓ (cache miss)
+POST /analyze to Python API at 10.0.2.2:8000
+     ↓
+Save result to SQLite DB
+     ↓
+Show: SPAM/SAFE badge + Risk Score + Status + Explanation
+```
+
+### Local Database (DatabaseHelper.kt)
+
+Every analyzed message is stored on the phone in SQLite (`smishing_detector.db`).
+
+| Column | Type | Description |
 |---|---|---|
-| Empty message | `""` | Skipped — `media_only` |
-| Photo / MMS | `[Image]`, `[Video]` | Skipped — `media_only` |
-| Trivial message | `"ok"`, `"yes thanks"`, `"hey"` | Skipped — `trivial` |
+| `phone_number` | TEXT | Sender address |
+| `date` | TEXT | Timestamp (yyyy-MM-dd HH:mm:ss) |
+| `message` | TEXT | Original SMS body |
+| `risk_score` | REAL | 0–100 combined score |
+| `prediction` | TEXT | `SPAM` or `SAFE` |
+| `status` | TEXT | `safe` / `caution` / `quarantined` |
+| `explanation` | TEXT | Plain-English reason |
 
-### What gets masked (PII stripping)
+**Status rules:**
+- `risk_score < 35` → **safe**
+- `35 ≤ risk_score < 70` → **caution**
+- `risk_score ≥ 70` → **quarantined**
 
-Sensitive information is replaced with labeled placeholders before being sent to any model, so no personal data leaks through.
+**Useful DB queries for teammates:**
+```kotlin
+db.getByStatus("caution")       // all caution messages
+db.getByStatus("quarantined")   // all quarantined messages
+db.getAllMessages()              // everything
+db.countByStatus("quarantined") // count only
+```
 
-| PII type | Example input | Output |
+### Permissions Required
+
+| Permission | Reason |
+|---|---|
+| `RECEIVE_SMS` | Intercept incoming SMS messages |
+| `INTERNET` | Call the Python analysis API |
+
+---
+
+## Preprocessing Pipeline (SCRUM — Yugveer Week 3)
+
+All messages pass through `src/preprocessing.py` before reaching any model.
+
+### Messages That Get Skipped
+
+| Type | Example | Skip Reason |
+|---|---|---|
+| Empty message | `""` | `media_only` |
+| Photo/MMS | `[Image]`, `[Video]` | `media_only` |
+| Trivial reply | `"ok"`, `"hey"`, `"lol"` | `trivial` |
+
+### PII Stripping
+
+| PII Type | Input | Output |
 |---|---|---|
 | Phone number | `Call 416-555-1234` | `Call [PHONE]` |
 | Email address | `email@phish.com` | `[EMAIL]` |
 | Credit/debit card | `4111 1111 1111 1111` | `[CARD]` |
 | SIN / SSN | `123 456 789` | `[ID]` |
 
-### How to verify it yourself
+---
 
-Run the full pipeline:
+## How the Hybrid Scoring Works
 
-```bash
-python src/pipeline.py
+```
+Final Score = (0.6 × ML Score) + (0.4 × Rule Score)
+Prediction  = SPAM if Final Score ≥ 35, else SAFE
 ```
 
-Type any SMS at the interactive prompt and see how it is cleaned before scoring. Smishing messages still get detected because keywords and URLs are preserved — only personal data is masked.
+| Component | Weight | What it checks |
+|---|---|---|
+| DistilBERT ML | 60% | Fine-tuned on spam/ham dataset |
+| Rule-based scorer | 40% | Keywords, untrusted URLs, brand domain mismatch |
 
-## Why the hybrid approach helps
+---
 
-A pure ML model can miss brand impersonation and suspicious link patterns. A pure rule-based system can overflag harmless messages. This repo combines both:
-- **ML score** from fine-tuned DistilBERT (60% weight)
-- **Rule score** from suspicious words, URLs, and domain mismatch checks (40% weight)
-- **Final prediction** from the weighted combined score (threshold: 35/100)
+## Known Limitations / TODO
 
-## Android app
-
-The `app/` folder contains the Android component:
-- **MainActivity.kt** — registers a broadcast receiver that intercepts incoming SMS messages and sends them to the Python API for analysis
-- **AndroidManifest.xml** — declares the `RECEIVE_SMS` permission
-- **activity_main.xml** — UI layout that displays the SMS text and analysis result
-
-## Current limitations
-
-- The dataset is relatively small.
-- Trusted-domain logic is intentionally simple for the demo.
-- TinyLlama (`tinyllama.py`) is included but the default explainer (`llm_explainer.py`) is still template-based — full LLM integration is planned.
-
-## Suggested future work
-
-- Add more smishing-specific training data
-- Wire TinyLlama into the pipeline as the active explainer
-- Add a Streamlit or Flask frontend
-- Save evaluation reports and confusion matrix plots
-
-## Team
-
-- **Yugveer Sidhu**
-- Gustavo De Vera
-- Rachna
-- Ashley Sun
+- `llm_explainer.py` is template-based — real LLM API call (Claude/OpenAI) planned
+- `tinyllama.py` is a prototype — not wired into the main pipeline yet
+- URL analyzer (separate repo) needs integration into `pipeline.py`
+- Android app shows only the most recent SMS — history screen planned (SCRUM-42)
+- No push notification yet when SPAM is detected
