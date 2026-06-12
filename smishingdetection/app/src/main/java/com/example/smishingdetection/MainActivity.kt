@@ -92,7 +92,8 @@ class MainActivity : AppCompatActivity() {
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray
-    ) {
+    )
+    {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
         if (requestCode == 999) {
@@ -264,8 +265,9 @@ class MainActivity : AppCompatActivity() {
         return Pair(riskScore, riskCategory)
     }
     private suspend fun classifyMessage(classifierInput: String, llmInput: String) {
-        Log.d("MainActivity", "========== CLASSIFICATION START ==========")
+
         try {
+            Log.d("MainActivity", "========== CLASSIFICATION START ==========")
             val (label, confidence) = classifier.classify(classifierInput)
             val (riskScore, riskCategory) = getRiskScore(label, confidence)
 
@@ -278,7 +280,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 return
             }
-
+            Log.d("MainActivity", "========== CLASSIFICATION END ==========")
             // Show classification result while LLM loads
             runOnUiThread {
                 when (riskCategory) {
@@ -336,7 +338,7 @@ class MainActivity : AppCompatActivity() {
                 resultTextView.text = "❌ Error: ${e.message}"
             }
         }
-        Log.d("MainActivity", "========== CLASSIFICATION END ==========")
+        Log.d("MainActivity", "========== PROCESSING SMS END ==========")
     }
 
     override fun onDestroy() {
