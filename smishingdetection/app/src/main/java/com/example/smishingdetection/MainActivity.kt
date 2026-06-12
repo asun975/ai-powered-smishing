@@ -216,10 +216,6 @@ class MainActivity : AppCompatActivity() {
         val classifierInput = preprocessor.preprocessClassifierText(body)
         val llmInput = preprocessor.preprocessLlmText(body)
 
-        Log.d("MainActivity", "---------- DATA CLEANING MODULE ----------")
-        Log.d("MainActivity", "Sanitization (classifier): $classifierInput")
-        Log.d("MainActivity", "PII masking (LLM): $llmInput")
-
         return Pair(classifierInput, llmInput)
     }
 
@@ -238,6 +234,8 @@ class MainActivity : AppCompatActivity() {
         // Do not log SMS text
         Log.d("MainActivity", "---------- PROCESSING SMS ($source) ----------")
         Log.d("MainActivity", "From: $sender")
+        Log.d("MainActivity", "PII removed (classifier): $classifierInput")
+        Log.d("MainActivity", "PII masked (LLM): $llmInput")
 
         runOnUiThread {
             smsTextView.text = "From: $sender\n\nMessage: $llmInput"
@@ -247,6 +245,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             classifyMessage(classifierInput, llmInput)
         }
+        Log.d("MainActivity", "========== PROCESSING SMS END ==========")
     }
     private fun getRiskScore(label: String, confidence: Float): Pair<Float, String> {
         val riskScore = if (label == "SPAM") {
@@ -272,7 +271,7 @@ class MainActivity : AppCompatActivity() {
             val (riskScore, riskCategory) = getRiskScore(label, confidence)
 
             Log.d("MainActivity", "Result: $label ($riskScore%)")
-
+            Log.d("MainActivity", "========== CLASSIFICATION END ==========")
             if (label == "ERROR") {
                 runOnUiThread {
                     resultTextView.text = "❌ Error analyzing\nCheck internet"
@@ -280,7 +279,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 return
             }
-            Log.d("MainActivity", "========== CLASSIFICATION END ==========")
+
             // Show classification result while LLM loads
             runOnUiThread {
                 when (riskCategory) {
@@ -338,7 +337,6 @@ class MainActivity : AppCompatActivity() {
                 resultTextView.text = "❌ Error: ${e.message}"
             }
         }
-        Log.d("MainActivity", "========== PROCESSING SMS END ==========")
     }
 
     override fun onDestroy() {
