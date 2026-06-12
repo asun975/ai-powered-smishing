@@ -10,24 +10,15 @@ import androidx.core.app.ActivityCompat
 import android.util.Log
 import androidx.core.content.ContextCompat
 import android.Manifest
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
-import android.database.ContentObserver
 import android.database.Cursor
 import android.os.Build
-import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Telephony
-import android.util.Log
-import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
@@ -37,7 +28,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var resultTextView: TextView
     private lateinit var explanationTextView: TextView
     private lateinit var classifier: SmishingClassifier
-    private lateinit var explainer: LlmExplainer          // NEW
+    private lateinit var explainer: LlmExplainer
     private var smsReceiver: BroadcastReceiver? = null
     private var smsObserver: ContentObserver? = null
     private var lastProcessedSmsId: String? = null
@@ -236,23 +227,24 @@ class MainActivity : AppCompatActivity() {
      * Log message and change UI for user
      * classify sms message
      */
-    private fun processSmsMessage(sender: String,
-                                  classifierInput: String,
-                                  llmInput: String,
-                                  source: String) {
+    private fun processSmsMessage(
+        sender: String,
+        classifierInput: String,
+        llmInput: String,
+        source: String
+    ) {
 
         // Do not log SMS text
         Log.d("MainActivity", "---------- PROCESSING SMS ($source) ----------")
         Log.d("MainActivity", "From: $sender")
-        Log.d("MainActivity", "Text: $classifierInput")
 
         runOnUiThread {
-            smsTextView.text = "From: $sender\n\nMessage: $body"
+            smsTextView.text = "From: $sender\n\nMessage: $llmInput"
             resultTextView.text = "🔍 Analyzing..."
         }
 
         lifecycleScope.launch {
-            classifyMessage(classifierInput)
+            classifyMessage(classifierInput, llmInput)
         }
     }
     private fun getRiskScore(label: String, confidence: Float): Pair<Float, String> {
@@ -271,10 +263,10 @@ class MainActivity : AppCompatActivity() {
         }
         return Pair(riskScore, riskCategory)
     }
-    private suspend fun classifyMessage(body: String) {
+    private suspend fun classifyMessage(classifierInput: String, llmInput: String) {
         Log.d("MainActivity", "========== CLASSIFICATION START ==========")
         try {
-            val (label, confidence) = classifier.classify(body)
+            val (label, confidence) = classifier.classify(classifierInput)
             val (riskScore, riskCategory) = getRiskScore(label, confidence)
 
             Log.d("MainActivity", "Result: $label ($riskScore%)")
@@ -329,7 +321,7 @@ class MainActivity : AppCompatActivity() {
 
             // Call LLM Explainer for High/Medium risk messages
             if (riskCategory == "HIGH" || riskCategory == "MEDIUM") {
-                val explanation = explainer.explain(body, label, riskScore)
+                val explanation = explainer.explain(llmInput, label, riskScore)
                 Log.d("MainActivity", "Explanation: $explanation")
 
                 runOnUiThread {
