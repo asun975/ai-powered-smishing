@@ -7,25 +7,27 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-class SmishingClassifier(private val apiURL: String) {
+class SmishingClassifier(private val apiUrl: String) {
 
     suspend fun classify(text: String): Pair<String, Float> = withContext(Dispatchers.IO) {
-        try {
-            Log.d("SmishingClassifier", "Classifying: $text")
+        Log.d("SmishingClassifier", "Classifying: $text")
 
-            val connection = URL(apiURL).openConnection() as HttpURLConnection
+        try {
+            Log.d("SmishingClassifier", "Sending to API: $apiUrl")
+
+            val connection = URL(apiUrl).openConnection() as HttpURLConnection
             connection.requestMethod = "POST"
             connection.setRequestProperty("Content-Type", "application/json")
             connection.connectTimeout = 30000
             connection.readTimeout = 30000
             connection.doOutput = true
 
-            // Flask API expects {"text": "message to classify"}
+            // Flask API expects: {"text": "message to classify"}
             val jsonInputString = JSONObject().apply {
                 put("text", text)
             }.toString()
 
-            Log.d("Smishing Classifier", "Request: $jsonInputString")
+            Log.d("SmishingClassifier", "Request: $jsonInputString")
 
             connection.outputStream.use { os ->
                 val input = jsonInputString.toByteArray(Charsets.UTF_8)
@@ -33,7 +35,7 @@ class SmishingClassifier(private val apiURL: String) {
             }
 
             val responseCode = connection.responseCode
-            Log.d("SmishingClassifier", "Response codeL $responseCode")
+            Log.d("SmishingClassifier", "Response code: $responseCode")
 
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
@@ -55,17 +57,18 @@ class SmishingClassifier(private val apiURL: String) {
                 }
             } else {
                 val errorBody = try {
-                    connection.errorStream?.bufferedReader()?.use { it.readText() }
-                        ?: "No error body"
+                    connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "No error body"
                 } catch (e: Exception) {
                     "Could not read error: ${e.message}"
                 }
                 Log.e("SmishingClassifier", "HTTP $responseCode: $errorBody")
             }
+
         } catch (e: Exception) {
             Log.e("SmishingClassifier", "Exception: ${e.javaClass.simpleName} - ${e.message}")
             e.printStackTrace()
         }
+
         return@withContext Pair("ERROR", 0f)
     }
 }
