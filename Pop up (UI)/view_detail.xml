@@ -1,0 +1,390 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ScrollView
+
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+
+    android:background="#F5F7FB">
+
+
+    <LinearLayout
+
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+
+        android:orientation="vertical"
+
+        android:padding="24dp">
+
+
+        <!-- Title -->
+
+
+        <TextView
+
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+
+            android:text="Phishing Analysis"
+
+            android:textSize="30sp"
+
+            android:textStyle="bold"
+
+            android:textColor="#111827"/>
+
+
+
+        <TextView
+
+            android:layout_width="wrap_content"
+
+            android:layout_height="wrap_content"
+
+            android:text="AI security report"
+
+            android:textSize="15sp"
+
+            android:textColor="#6B7280"
+
+            android:layout_marginTop="5dp"/>
+
+
+
+        <!-- SMS Card -->
+
+
+        <androidx.cardview.widget.CardView
+
+            android:layout_width="match_parent"
+
+            android:layout_height="wrap_content"
+
+            android:layout_marginTop="25dp"
+
+            app:cardCornerRadius="20dp"
+
+            app:cardElevation="5dp">
+
+
+            <LinearLayout
+
+                android:layout_width="match_parent"
+
+                android:layout_height="wrap_content"
+
+                android:orientation="vertical"
+
+                android:padding="20dp">
+
+
+
+                <TextView
+
+                    android:layout_width="wrap_content"
+
+                    android:layout_height="wrap_content"
+
+                    android:text="SMS Message"
+
+                    android:textStyle="bold"
+
+                    android:textSize="18sp"/>
+
+
+
+                <TextView
+
+                    android:id="@+id/messageText"
+
+                    android:layout_width="match_parent"
+
+                    android:layout_height="wrap_content"
+
+                    android:text="Message content"
+
+                    android:textSize="16sp"
+
+                    android:layout_marginTop="12dp"/>
+
+
+            </LinearLayout>
+
+
+        </androidx.cardview.widget.CardView>
+
+
+
+
+
+        <!-- Result Card -->
+
+
+        <androidx.cardview.widget.CardView
+
+            android:layout_width="match_parent"
+
+            android:layout_height="wrap_content"
+
+            android:layout_marginTop="20dp"
+
+            app:cardCornerRadius="20dp"
+
+            app:cardElevation="5dp">
+
+
+
+            <LinearLayout
+
+                android:layout_width="match_parent"
+
+                android:layout_height="wrap_content"
+
+                android:orientation="vertical"
+
+                android:padding="20dp">
+
+
+
+                <TextView
+
+                    android:layout_width="wrap_content"
+
+                    android:layout_height="wrap_content"
+
+                    android:text="Detection Result"
+
+                    android:textStyle="bold"
+
+                    android:textSize="18sp"/>
+
+
+
+                <TextView
+
+                    android:id="@+id/detailsClassification"
+
+                    android:layout_width="wrap_content"
+
+                    android:layout_height="wrap_content"
+
+                    android:text="MALICIOUS"
+
+                    android:textSize="26sp"
+
+                    android:textStyle="bold"
+
+                    android:textColor="#D32F2F"
+
+                    android:layout_marginTop="12dp"/>
+
+
+
+                <TextView
+
+                    android:id="@+id/detailsConfidence"
+
+                    android:layout_width="wrap_content"
+
+                    android:layout_height="wrap_content"
+
+                    android:text="Confidence: 96%"
+
+                    android:textSize="18sp"
+
+                    android:layout_marginTop="10dp"/>
+
+
+            </LinearLayout>
+
+
+        </androidx.cardview.widget.CardView>
+
+
+
+
+
+
+        <!-- Indicators -->
+
+
+        <androidx.cardview.widget.CardView
+
+            android:layout_width="match_parent"
+
+            android:layout_height="wrap_content"
+
+            android:layout_marginTop="20dp"
+
+            app:cardCornerRadius="20dp"
+
+            app:cardElevation="5dp">
+
+
+
+            <LinearLayout
+
+                android:layout_width="match_parent"
+
+                android:layout_height="wrap_content"
+
+                android:orientation="vertical"
+
+                android:padding="20dp">
+
+
+
+                <TextView
+
+                    android:layout_width="wrap_content"
+
+                    android:layout_height="wrap_content"
+
+                    android:text="Detected Indicators"
+
+                    android:textStyle="bold"
+
+                    android:textSize="18sp"/>
+
+
+
+                <TextView
+
+                    android:id="@+id/indicatorText"
+
+                    android:layout_width="match_parent"
+
+                    android:layout_height="wrap_content"
+
+                    android:text="
+✓ Suspicious URL
+✓ Urgent language
+✓ Account verification request
+"
+
+                    android:textSize="16sp"
+
+                    android:layout_marginTop="12dp"/>
+
+
+
+            </LinearLayout>
+
+
+        </androidx.cardview.widget.CardView>
+
+
+
+
+
+
+
+        <!-- Reason -->
+
+
+        <androidx.cardview.widget.CardView
+
+            android:layout_width="match_parent"
+
+            android:layout_height="wrap_content"
+
+            android:layout_marginTop="20dp"
+
+            app:cardCornerRadius="20dp"
+
+            app:cardElevation="5dp">
+
+
+
+            <LinearLayout
+
+                android:layout_width="match_parent"
+
+                android:layout_height="wrap_content"
+
+                android:orientation="vertical"
+
+                android:padding="20dp">
+
+
+
+                <TextView
+
+                    android:layout_width="wrap_content"
+
+                    android:layout_height="wrap_content"
+
+                    android:text="AI Explanation"
+
+                    android:textStyle="bold"
+
+                    android:textSize="18sp"/>
+
+
+
+                <TextView
+
+                    android:id="@+id/detailsReason"
+
+                    android:layout_width="match_parent"
+
+                    android:layout_height="wrap_content"
+
+                    android:text="Reason generated by AI"
+
+                    android:textSize="16sp"
+
+                    android:layout_marginTop="10dp"/>
+
+
+            </LinearLayout>
+
+
+        </androidx.cardview.widget.CardView>
+
+
+
+
+
+
+        <!-- Action Button -->
+
+
+        <Button
+
+            android:id="@+id/blockButton"
+
+            android:layout_width="match_parent"
+
+            android:layout_height="60dp"
+
+            android:text="Block Message"
+
+            android:textSize="18sp"
+
+            android:layout_marginTop="25dp"/>
+
+
+
+        <Button
+
+            android:id="@+id/backButton"
+
+            android:layout_width="match_parent"
+
+            android:layout_height="60dp"
+
+            android:text="Back"
+
+            android:layout_marginTop="10dp"/>
+
+
+
+    </LinearLayout>
+
+
+</ScrollView>
