@@ -42,7 +42,8 @@ def predict(text: str) -> dict:
     confidence = probs[0][predicted_class].item()
 
     prediction = "SPAM" if predicted_class == 1 else "SAFE"
-    risk_score = confidence * 100 if predicted_class == 1 else (1 - confidence) * 100
+    # Risk score: high when SPAM, near-zero when confidently SAFE
+    risk_score = confidence * 100 if predicted_class == 1 else (1 - confidence) * 100 * 0.3
 
     return {
         "prediction": prediction,

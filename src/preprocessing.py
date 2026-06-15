@@ -1,5 +1,4 @@
 import re
-from sklearn.feature_extraction import _stop_words
 from nltk.stem import SnowballStemmer
 
 stemmer = SnowballStemmer("english")
@@ -126,6 +125,7 @@ def clean_text(text: str) -> str:
     Strips PII first, then lowercases, removes punctuation, drops stop words,
     and applies stemming. Do NOT use this for transformer model input.
     """
+    from sklearn.feature_extraction import _stop_words  # import here to avoid top-level private import
     text = strip_pii(text)
     text = text.lower()
     text = re.sub(r"http\S+", "URL", text)

@@ -36,8 +36,8 @@ def extract_urls(text: str) -> list[str]:
 
 
 def is_trusted_domain(url: str) -> bool:
-    domain = urlparse(url).netloc.lower()
-    return any(trusted in domain for trusted in TRUSTED_DOMAINS)
+    domain = urlparse(url).netloc.lower().split(":")[0]  # strip port
+    return any(domain == trusted or domain.endswith("." + trusted) for trusted in TRUSTED_DOMAINS)
 
 
 

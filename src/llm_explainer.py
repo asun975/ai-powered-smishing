@@ -25,7 +25,7 @@ def generate_explanation(text: str, risk_score: float) -> str:
 
     if risk_score >= 70:
         summary = "This message is highly suspicious and likely a smishing attempt."
-    elif risk_score >= 40:
+    elif risk_score >= 35:
         summary = "This message has multiple suspicious signals and should be treated carefully."
     else:
         summary = "This message looks relatively safe, but you should still verify unexpected links or requests."

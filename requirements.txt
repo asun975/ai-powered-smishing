@@ -6,3 +6,6 @@ pandas
 numpy
 scikit-learn
 nltk
+fastapi
+uvicorn[standard]
+pydantic

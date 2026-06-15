@@ -9,11 +9,14 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
 import android.provider.Telephony
+import android.util.Log
 import android.view.View
 import android.widget.Button
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
 import org.json.JSONObject
 import java.io.OutputStreamWriter
@@ -25,37 +28,44 @@ import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
-    // 10.0.2.2 is the Android emulator's alias for the host machine's localhost
-    private val API_URL = "http://10.0.2.2:8000/analyze"
+    companion object {
+        private const val TAG = "SmishingDetector"
+        private const val SMS_PERMISSION_CODE = 111
+        private const val API_URL = "http://10.0.2.2:8000/analyze"
+    }
 
     private lateinit var smsTextView: TextView
     private lateinit var predictionBadge: TextView
     private lateinit var riskScoreView: TextView
+    private lateinit var riskProgressBar: ProgressBar
     private lateinit var explanationView: TextView
-    private lateinit var loadingView: TextView
+    private lateinit var loadingLayout: View
+    private lateinit var resultCard: CardView
     private lateinit var markSafeButton: Button
     private lateinit var db: DatabaseHelper
 
-    // Tracks the current message body so the button knows what to update
-    private var currentMessageBody: String = ""
+    private var currentMessageBody = ""
+    private var currentStatus = "safe"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        smsTextView     = findViewById(R.id.smsTextView)
-        predictionBadge = findViewById(R.id.predictionBadge)
-        riskScoreView   = findViewById(R.id.riskScoreView)
-        explanationView = findViewById(R.id.explanationView)
-        loadingView     = findViewById(R.id.loadingView)
-        markSafeButton  = findViewById(R.id.markSafeButton)
+        smsTextView      = findViewById(R.id.smsTextView)
+        predictionBadge  = findViewById(R.id.predictionBadge)
+        riskScoreView    = findViewById(R.id.riskScoreView)
+        riskProgressBar  = findViewById(R.id.riskProgressBar)
+        explanationView  = findViewById(R.id.explanationView)
+        loadingLayout    = findViewById(R.id.loadingLayout)
+        resultCard       = findViewById(R.id.resultCard)
+        markSafeButton   = findViewById(R.id.markSafeButton)
 
         db = DatabaseHelper(this)
 
         markSafeButton.setOnClickListener {
             if (currentMessageBody.isNotEmpty()) {
                 db.markAsSafe(currentMessageBody)
-                // Update UI to reflect the new safe status
+                currentStatus = "safe"
                 predictionBadge.text = "SAFE"
                 predictionBadge.setBackgroundColor(Color.parseColor("#4CAF50"))
                 riskScoreView.text = riskScoreView.text.toString()
@@ -72,10 +82,10 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.RECEIVE_SMS),
-                111
+                SMS_PERMISSION_CODE
             )
         } else {
-            receiveMSG()
+            registerSmsReceiver()
         }
     }
 
@@ -85,37 +95,36 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 111 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            receiveMSG()
+        if (requestCode == SMS_PERMISSION_CODE
+            && grantResults.isNotEmpty()
+            && grantResults[0] == PackageManager.PERMISSION_GRANTED
+        ) {
+            registerSmsReceiver()
         }
     }
 
-    fun receiveMSG() {
+    private fun registerSmsReceiver() {
         val br = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                for (sms in Telephony.Sms.Intents.getMessagesFromIntent(intent)) {
-                    val sender = sms.displayOriginatingAddress
-                    val body   = sms.displayMessageBody
+                val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
+                for (sms in messages) {
+                    val sender = sms.displayOriginatingAddress ?: "Unknown"
+                    val body   = sms.displayMessageBody ?: continue
 
                     currentMessageBody = body
                     smsTextView.text = "From: $sender\n\nMessage: $body"
 
-                    predictionBadge.visibility = View.GONE
-                    riskScoreView.visibility   = View.GONE
-                    explanationView.visibility = View.GONE
+                    resultCard.visibility      = View.GONE
                     markSafeButton.visibility  = View.GONE
-                    loadingView.visibility     = View.VISIBLE
+                    loadingLayout.visibility   = View.VISIBLE
 
                     Thread {
-                        // ── 1. Check local cache first ──────────────────────
                         val cached = db.findByMessage(body)
                         if (cached != null) {
                             runOnUiThread { showCachedResult(cached) }
                             return@Thread
                         }
-
-                        // ── 2. Cache miss — call the API ────────────────────
-                        val result = analyzeMessage(body)
+                        val result = callApi(body)
                         runOnUiThread { showApiResult(sender, body, result) }
                     }.start()
                 }
@@ -124,65 +133,64 @@ class MainActivity : AppCompatActivity() {
         registerReceiver(br, IntentFilter("android.provider.Telephony.SMS_RECEIVED"))
     }
 
-    // ── API call ──────────────────────────────────────────────────────────────
+    // ── API ───────────────────────────────────────────────────────────────────
 
-    private fun analyzeMessage(message: String): JSONObject? {
+    private fun callApi(message: String): JSONObject? {
         return try {
-            val url = URL(API_URL)
-            val connection = url.openConnection() as HttpURLConnection
+            val connection = URL(API_URL).openConnection() as HttpURLConnection
             connection.requestMethod = "POST"
             connection.setRequestProperty("Content-Type", "application/json")
             connection.doOutput = true
-            connection.connectTimeout = 10_000
-            connection.readTimeout    = 10_000
+            connection.connectTimeout = 15_000
+            connection.readTimeout    = 15_000
 
-            val body = JSONObject().put("message", message).toString()
-            OutputStreamWriter(connection.outputStream).use { it.write(body) }
+            OutputStreamWriter(connection.outputStream).use {
+                it.write(JSONObject().put("message", message).toString())
+            }
 
             if (connection.responseCode == HttpURLConnection.HTTP_OK)
                 JSONObject(connection.inputStream.bufferedReader().readText())
-            else
+            else {
+                Log.e(TAG, "API returned HTTP ${connection.responseCode}")
                 null
+            }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "API call failed: ${e.message}", e)
             null
         }
     }
 
-    // ── Display helpers ───────────────────────────────────────────────────────
+    // ── Display ───────────────────────────────────────────────────────────────
 
     private fun showApiResult(sender: String, body: String, result: JSONObject?) {
-        loadingView.visibility = View.GONE
+        loadingLayout.visibility = View.GONE
 
-        if (result == null) {
-            showError()
-            return
-        }
+        if (result == null) { showError(); return }
 
-        val prediction  = result.getString("prediction")
-        val riskScore   = result.getDouble("risk_score")
-        val explanation = result.getString("explanation")
         val skipped     = result.getBoolean("skipped")
-
-        val finalPrediction  = if (skipped) "SAFE" else prediction
-        val finalScore       = if (skipped) 0.0    else riskScore
-        val finalExplanation = explanation
+        val prediction  = if (skipped) "SAFE" else result.getString("prediction")
+        val riskScore   = if (skipped) 0.0    else result.getDouble("risk_score")
+        val explanation = result.getString("explanation")
 
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-        db.insertMessage(
-            phoneNumber = sender,
-            date        = timestamp,
-            message     = body,
-            riskScore   = finalScore,
-            prediction  = finalPrediction,
-            explanation = finalExplanation,
-        )
+        try {
+            db.insertMessage(
+                phoneNumber = sender,
+                date        = timestamp,
+                message     = body,
+                riskScore   = riskScore,
+                prediction  = prediction,
+                explanation = explanation,
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "DB insert failed: ${e.message}", e)
+        }
 
-        renderUI(finalPrediction, finalScore, finalExplanation, fromCache = false)
+        renderUI(prediction, riskScore, explanation, fromCache = false)
     }
 
     private fun showCachedResult(cached: Map<String, String>) {
-        loadingView.visibility = View.GONE
+        loadingLayout.visibility = View.GONE
         val prediction  = cached[DatabaseHelper.COL_PREDICTION] ?: "SAFE"
         val riskScore   = cached[DatabaseHelper.COL_RISK_SCORE]?.toDoubleOrNull() ?: 0.0
         val explanation = cached[DatabaseHelper.COL_EXPLANATION] ?: ""
@@ -195,35 +203,54 @@ class MainActivity : AppCompatActivity() {
         explanation: String,
         fromCache: Boolean,
     ) {
-        predictionBadge.text = if (fromCache) "$prediction (cached)" else prediction
-        predictionBadge.setBackgroundColor(
-            if (prediction == "SPAM") Color.parseColor("#F44336")
-            else Color.parseColor("#4CAF50")
-        )
-        predictionBadge.visibility = View.VISIBLE
+        currentStatus = DatabaseHelper.statusFromScore(riskScore)
 
-        val status = DatabaseHelper.statusFromScore(riskScore)
-        val statusLabel = when (status) {
+        // Badge
+        predictionBadge.text = if (fromCache) "$prediction  (cached)" else prediction
+        predictionBadge.setBackgroundColor(
+            when {
+                prediction == "SPAM" && currentStatus == "quarantined" -> Color.parseColor("#D32F2F")
+                prediction == "SPAM" -> Color.parseColor("#F44336")
+                else -> Color.parseColor("#388E3C")
+            }
+        )
+
+        // Risk score text + progress bar
+        val statusLabel = when (currentStatus) {
             "quarantined" -> "⛔ Quarantined"
             "caution"     -> "⚠️ Caution"
             else          -> "✅ Safe"
         }
         riskScoreView.text = "Risk Score: ${"%.1f".format(riskScore)} / 100   $statusLabel"
-        riskScoreView.visibility = View.VISIBLE
+        riskProgressBar.progress = riskScore.toInt()
 
+        // Colour the progress bar based on risk
+        val progressColor = when (currentStatus) {
+            "quarantined" -> Color.parseColor("#D32F2F")
+            "caution"     -> Color.parseColor("#FF9800")
+            else          -> Color.parseColor("#4CAF50")
+        }
+        riskProgressBar.progressTintList =
+            android.content.res.ColorStateList.valueOf(progressColor)
+
+        // Explanation
         explanationView.text = explanation
-        explanationView.visibility = View.VISIBLE
 
-        // Show "Mark as Safe" button only for quarantined or caution messages
-        markSafeButton.visibility = if (status == "quarantined" || status == "caution")
-            View.VISIBLE else View.GONE
+        // Show result card
+        resultCard.visibility = View.VISIBLE
+
+        // Mark as Safe button only for non-safe messages
+        markSafeButton.visibility =
+            if (currentStatus != "safe") View.VISIBLE else View.GONE
     }
 
     private fun showError() {
         predictionBadge.text = "ERROR"
         predictionBadge.setBackgroundColor(Color.GRAY)
-        predictionBadge.visibility = View.VISIBLE
-        riskScoreView.text = "Could not reach the analysis server."
-        riskScoreView.visibility = View.VISIBLE
+        riskScoreView.text = "Could not reach the analysis server.\nMake sure api.py is running."
+        riskProgressBar.progress = 0
+        explanationView.text = ""
+        resultCard.visibility = View.VISIBLE
+        markSafeButton.visibility = View.GONE
     }
 }
