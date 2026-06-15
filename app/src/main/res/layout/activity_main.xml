@@ -65,6 +65,17 @@
             android:background="#F8F8F8"
             android:visibility="gone" />
 
+        <!-- Mark as Safe button — only visible for quarantined/caution messages -->
+        <Button
+            android:id="@+id/markSafeButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Mark as Safe"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#4CAF50"
+            android:layout_marginTop="16dp"
+            android:visibility="gone" />
+
         <!-- Loading indicator -->
         <TextView
             android:id="@+id/loadingView"

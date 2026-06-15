@@ -196,4 +196,41 @@ class DatabaseHelper(context: Context) :
         )
         return cursor.use { if (it.moveToFirst()) it.getInt(0) else 0 }
     }
+
+    // ── Update ────────────────────────────────────────────────────────────────
+
+    /**
+     * Mark a quarantined or caution message as safe by its exact message body.
+     * Updates both status → "safe" and prediction → "SAFE".
+     * Returns the number of rows updated (1 on success, 0 if not found).
+     */
+    fun markAsSafe(message: String): Int {
+        val values = ContentValues().apply {
+            put(COL_STATUS, "safe")
+            put(COL_PREDICTION, "SAFE")
+        }
+        return writableDatabase.update(
+            TABLE_NAME,
+            values,
+            "$COL_MESSAGE = ?",
+            arrayOf(message)
+        )
+    }
+
+    /**
+     * Update the status of a message by its row ID.
+     * Useful for Rachna's detail screen where the row ID is known.
+     */
+    fun updateStatusById(id: Long, newStatus: String): Int {
+        val values = ContentValues().apply {
+            put(COL_STATUS, newStatus)
+            if (newStatus == "safe") put(COL_PREDICTION, "SAFE")
+        }
+        return writableDatabase.update(
+            TABLE_NAME,
+            values,
+            "$COL_ID = ?",
+            arrayOf(id.toString())
+        )
+    }
 }

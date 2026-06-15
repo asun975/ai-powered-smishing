@@ -10,7 +10,9 @@ import android.graphics.Color
 import android.os.Bundle
 import android.provider.Telephony
 import android.view.View
+import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import org.json.JSONObject
@@ -31,7 +33,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var riskScoreView: TextView
     private lateinit var explanationView: TextView
     private lateinit var loadingView: TextView
+    private lateinit var markSafeButton: Button
     private lateinit var db: DatabaseHelper
+
+    // Tracks the current message body so the button knows what to update
+    private var currentMessageBody: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,9 +48,23 @@ class MainActivity : AppCompatActivity() {
         riskScoreView   = findViewById(R.id.riskScoreView)
         explanationView = findViewById(R.id.explanationView)
         loadingView     = findViewById(R.id.loadingView)
+        markSafeButton  = findViewById(R.id.markSafeButton)
 
-        // Open the local SQLite database
         db = DatabaseHelper(this)
+
+        markSafeButton.setOnClickListener {
+            if (currentMessageBody.isNotEmpty()) {
+                db.markAsSafe(currentMessageBody)
+                // Update UI to reflect the new safe status
+                predictionBadge.text = "SAFE"
+                predictionBadge.setBackgroundColor(Color.parseColor("#4CAF50"))
+                riskScoreView.text = riskScoreView.text.toString()
+                    .replace("⛔ Quarantined", "✅ Safe")
+                    .replace("⚠️ Caution", "✅ Safe")
+                markSafeButton.visibility = View.GONE
+                Toast.makeText(this, "Message marked as safe", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
             != PackageManager.PERMISSION_GRANTED
@@ -77,20 +97,20 @@ class MainActivity : AppCompatActivity() {
                     val sender = sms.displayOriginatingAddress
                     val body   = sms.displayMessageBody
 
+                    currentMessageBody = body
                     smsTextView.text = "From: $sender\n\nMessage: $body"
 
                     predictionBadge.visibility = View.GONE
                     riskScoreView.visibility   = View.GONE
                     explanationView.visibility = View.GONE
+                    markSafeButton.visibility  = View.GONE
                     loadingView.visibility     = View.VISIBLE
 
                     Thread {
                         // ── 1. Check local cache first ──────────────────────
                         val cached = db.findByMessage(body)
                         if (cached != null) {
-                            runOnUiThread {
-                                showCachedResult(cached)
-                            }
+                            runOnUiThread { showCachedResult(cached) }
                             return@Thread
                         }
 
@@ -131,7 +151,6 @@ class MainActivity : AppCompatActivity() {
 
     // ── Display helpers ───────────────────────────────────────────────────────
 
-    /** Show result from a fresh API response and save it to the database. */
     private fun showApiResult(sender: String, body: String, result: JSONObject?) {
         loadingView.visibility = View.GONE
 
@@ -149,7 +168,6 @@ class MainActivity : AppCompatActivity() {
         val finalScore       = if (skipped) 0.0    else riskScore
         val finalExplanation = explanation
 
-        // Save to local database so we never call the API again for this message
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         db.insertMessage(
             phoneNumber = sender,
@@ -163,7 +181,6 @@ class MainActivity : AppCompatActivity() {
         renderUI(finalPrediction, finalScore, finalExplanation, fromCache = false)
     }
 
-    /** Show result loaded from the local SQLite cache. */
     private fun showCachedResult(cached: Map<String, String>) {
         loadingView.visibility = View.GONE
         val prediction  = cached[DatabaseHelper.COL_PREDICTION] ?: "SAFE"
@@ -178,7 +195,6 @@ class MainActivity : AppCompatActivity() {
         explanation: String,
         fromCache: Boolean,
     ) {
-        // Badge colour: red = SPAM, green = SAFE
         predictionBadge.text = if (fromCache) "$prediction (cached)" else prediction
         predictionBadge.setBackgroundColor(
             if (prediction == "SPAM") Color.parseColor("#F44336")
@@ -186,7 +202,6 @@ class MainActivity : AppCompatActivity() {
         )
         predictionBadge.visibility = View.VISIBLE
 
-        // Status label under the badge
         val status = DatabaseHelper.statusFromScore(riskScore)
         val statusLabel = when (status) {
             "quarantined" -> "⛔ Quarantined"
@@ -198,6 +213,10 @@ class MainActivity : AppCompatActivity() {
 
         explanationView.text = explanation
         explanationView.visibility = View.VISIBLE
+
+        // Show "Mark as Safe" button only for quarantined or caution messages
+        markSafeButton.visibility = if (status == "quarantined" || status == "caution")
+            View.VISIBLE else View.GONE
     }
 
     private fun showError() {
