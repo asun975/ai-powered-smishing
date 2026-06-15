@@ -199,6 +199,16 @@ db.getAllMessages()              // everything
 db.countByStatus("quarantined") // count only
 ```
 
+### Mark as Safe (SCRUM-50)
+
+Messages flagged as **caution** or **quarantined** show a green **Mark as Safe** button below the result card. Tapping it:
+
+1. Updates the message's `status` to `safe` in the local SQLite database
+2. Flips the prediction badge to green (`SAFE`)
+3. Hides the button
+
+This is also available to teammates via `db.markAsSafe(messageBody)` or `db.updateStatusById(id, "safe")`.
+
 ### Permissions Required
 
 | Permission | Reason |
