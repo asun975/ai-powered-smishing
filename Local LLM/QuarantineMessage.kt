@@ -23,3 +23,22 @@ suspend fun updateMessageStatus(
             status = status
         )
 }
+
+@Dao
+interface MessageDao {
+
+
+    @Query(
+        """
+        UPDATE analyzed_messages
+        SET status = :status
+        WHERE id = :id
+        """
+    )
+    suspend fun updateStatus(
+        id: Int,
+        status: String
+    )
+
+
+}
