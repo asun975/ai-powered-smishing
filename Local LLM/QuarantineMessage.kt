@@ -1,63 +1,25 @@
-private suspend fun moveToQuarantine(
-    sms:String,
-    aiResult:String
-){
+suspend fun updateMessageStatus(
+    messageId: Int,
+    riskScore: Int,
+    database: AppDatabase
+) {
 
-    val confidence =
-        Regex("\\d+")
-            .find(aiResult)
-            ?.value
-            ?.toInt()
-            ?:0
+    val status = when {
 
+        riskScore >= 70 ->
+            "quarantined"
 
-    val malicious =
-        aiResult.contains(
-            "MALICIOUS",
-            true
-        )
+        riskScore >= 35 ->
+            "caution"
 
-
-    if(
-        malicious &&
-        confidence >= 70
-    ){
-
-
-        val database =
-            Room.databaseBuilder(
-                applicationContext,
-                AppDatabase::class.java,
-                "phishguard.db"
-            )
-            .build()
-
-
-
-        val dao =
-            database.quarantineDAO()
-
-
-
-        dao.insert(
-
-            QuarantineMessage(
-
-                message = sms,
-
-                classification =
-                    "MALICIOUS",
-
-                confidence =
-                    confidence,
-
-                reason =
-                    aiResult
-
-            )
-
-        )
-
+        else ->
+            "safe"
     }
 
+
+    database.messageDao()
+        .updateStatus(
+            id = messageId,
+            status = status
+        )
 }
