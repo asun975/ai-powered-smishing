@@ -72,6 +72,15 @@ class Preprocessing {
                 .replace(mfaCode, "[VERIFICATION CODE]")
                 .trim()
         }
+        fun extractUrl(body: String): List<String?> {
+            val urls = Regex("""(?i)\b((?:https?://|www\.)[^\s<>"']+)""").findAll(body)
+                .map { match ->
+                    match.value.trimEnd(
+                        '.', ',', ';', ':', '!', '?', ')', ']', '}'
+                    )
+                }
+                .toList()
+            return urls
+        }
     }
-
 }
