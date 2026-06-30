@@ -48,6 +48,10 @@ android {
                 "LLM_API_URL",
                 appProperties.getProperty("LLM_API_URL")
             )
+            buildConfigField("String",
+                "SCAN_API_URL",
+                appProperties.getProperty("SCAN_API_URL")
+            )
         }
     }
     compileOptions {
@@ -73,6 +77,13 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+
+    // Retrofit
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    // Retrofit with Scalar Converter
+    implementation("com.squareup.retrofit2:converter-scalars:2.9.0")
+    // HTTP Logging
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)

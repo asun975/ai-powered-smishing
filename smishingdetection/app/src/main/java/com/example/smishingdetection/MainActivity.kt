@@ -27,6 +27,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var smsTextView: TextView
     private lateinit var resultTextView: TextView
     private lateinit var explanationTextView: TextView
+
+    // URL sandbox
+    private lateinit var urlAnalyzerTextView: TextView
+    private lateinit var scanProgressBar: ProgressBar
+    private lateinit var urlAnalyzer: UrlAnalyzer
+
     private lateinit var classifier: SmishingClassifier
     private lateinit var explainer: LlmExplainer
     private var smsReceiver: BroadcastReceiver? = null
@@ -42,12 +48,14 @@ class MainActivity : AppCompatActivity() {
         smsTextView = findViewById(R.id.smsTextView)
         resultTextView = findViewById(R.id.resultTextView)
         explanationTextView = findViewById(R.id.explanationTextView)
+        urlAnalyzerTextView = findViewById(R.id.urlAnalyzerTextView)
 
         val apiUrl = BuildConfig.CLASSIFIER_API_URL
         val llmUrl = BuildConfig.LLM_API_URL
 
         classifier = SmishingClassifier(apiUrl)
         explainer = LlmExplainer(llmUrl)
+        urlAnalyzer = UrlAnalyzer()
 
         resultTextView.text = "⏳ Setting up..."
 
@@ -135,8 +143,8 @@ class MainActivity : AppCompatActivity() {
 
                             Log.d("MainActivity", "Broadcast detected: from $sender")
 
-                            val (classifierInput, llmInput) = preprocessSmsMessage(body)
-                            processSmsMessage(sender, classifierInput, llmInput, "BROADCAST")
+                            val (classifierInput, llmInput, urls) = preprocessSmsMessage(body)
+                            processSmsMessage(sender, classifierInput, llmInput, "BROADCAST", urls)
                         }
                     }
                 } catch (e: Exception) {
@@ -196,8 +204,8 @@ class MainActivity : AppCompatActivity() {
 
                     if (smsId != null && smsId != lastProcessedSmsId) {
                         lastProcessedSmsId = smsId
-                        val (classifierInput, llmInput) = preprocessSmsMessage(body)
-                        processSmsMessage(sender, classifierInput, llmInput,"DATABASE")
+                        val (classifierInput, llmInput, urls) = preprocessSmsMessage(body)
+                        processSmsMessage(sender, classifierInput, llmInput, "DATABASE", urls)
                     }
                 }
             }
@@ -210,13 +218,15 @@ class MainActivity : AppCompatActivity() {
      * Preprocess SMS message for input to classifier and LLM
      * Data sanitization: remove PII in classifier input and mask PII for LLM to keep context
      * Remove unnecessary characters in classifier input to improve model performance
-    **/
-    private fun preprocessSmsMessage(body: String): Pair<String, String> {
-        val preprocessor = Preprocessing
-        val classifierInput = preprocessor.preprocessClassifierText(body)
-        val llmInput = preprocessor.preprocessLlmText(body)
+     * Returns fully sanitized text, masked text, and list of urls found in text
+     **/
+    private fun preprocessSmsMessage(body: String): Triple<String, String, List<String?>> {
+        val dataCleaner = Preprocessing
+        val classifierInput = dataCleaner.preprocessClassifierText(body)
+        val llmInput = dataCleaner.preprocessLlmText(body)
+        val urlList = dataCleaner.extractUrl(body)
 
-        return Pair(classifierInput, llmInput)
+        return Triple(classifierInput, llmInput, urlList)
     }
 
     /**
@@ -228,8 +238,10 @@ class MainActivity : AppCompatActivity() {
         sender: String,
         classifierInput: String,
         llmInput: String,
-        source: String
+        source: String,
+        urls: List<String?>
     ) {
+        val url = urls.firstOrNull()
 
         // Do not log SMS text
         Log.d("MainActivity", "---------- PROCESSING SMS ($source) ----------")
@@ -243,10 +255,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            classifyMessage(classifierInput, llmInput)
+            classifyMessage(classifierInput, llmInput, url)
         }
         Log.d("MainActivity", "========== PROCESSING SMS END ==========")
     }
+
     private fun getRiskScore(label: String, confidence: Float): Pair<Float, String> {
         val riskScore = if (label == "SPAM") {
             confidence
@@ -263,7 +276,8 @@ class MainActivity : AppCompatActivity() {
         }
         return Pair(riskScore, riskCategory)
     }
-    private suspend fun classifyMessage(classifierInput: String, llmInput: String) {
+
+    private suspend fun classifyMessage(classifierInput: String, llmInput: String, url: String?) {
 
         try {
             Log.d("MainActivity", "========== CLASSIFICATION START ==========")
@@ -272,6 +286,8 @@ class MainActivity : AppCompatActivity() {
 
             Log.d("MainActivity", "Result: $label ($riskScore%)")
             Log.d("MainActivity", "========== CLASSIFICATION END ==========")
+            Log.d("MainActivity", "========== URL ANALYZER START ==========")
+            val scanResult = urlAnalyzer.analyzeUrl(url)
             if (label == "ERROR") {
                 runOnUiThread {
                     resultTextView.text = "❌ Error analyzing\nCheck internet"
@@ -331,6 +347,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            // API call to urlscan.io
+            runOnUiThread {
+                urlAnalyzerTextView.text = scanResult
+            }
+            Log.d("MainActivity", "========== URL ANALYZER END ==========")
         } catch (e: Exception) {
             Log.e("MainActivity", "Classification error: ${e.message}", e)
             runOnUiThread {

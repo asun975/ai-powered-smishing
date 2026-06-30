@@ -42,14 +42,31 @@
         android:id="@+id/explanationTextView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text=""
-        android:textSize="15sp"
-        android:padding="16dp"
+        android:layout_marginTop="28dp"
         android:gravity="start"
         android:lineSpacingExtra="4dp"
-        app:layout_constraintTop_toBottomOf="@id/smsTextView"
-        app:layout_constraintStart_toStartOf="parent"
+        android:padding="16dp"
+        android:text=""
+        android:textSize="15sp"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="8dp"/>
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/smsTextView" />
+
+    <!-- Url Analyzer view -->
+    <TextView
+        android:id="@+id/urlAnalyzerTextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="108dp"
+        android:gravity="start"
+        android:lineSpacingExtra="4dp"
+        android:padding="16dp"
+        android:text=""
+        android:textSize="15sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/smsTextView" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
