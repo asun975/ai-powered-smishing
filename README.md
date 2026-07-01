@@ -8,11 +8,12 @@ Our project is an Android application capable of performing real‑time analysis
 - 🔍 **Real‑time SMS scanning**
 - 🔒 **Data‑cleaning module** (text preprocessing and data sanitization)
 - 🧠 **Risk scoring via classification API**
+- **URL sandbox analysis**
 - 💬 **LLM‑generated explanations** for flagged messages
+- 🔔 **User alerts** for suspicious content
 #### In Progress
 - 🛡️ **Quarantine simulation** for high‑risk messages
-- 🚫 **Blocking simulation** (UI‑level only; no OS‑level blocking)
-- 🔔 **User alerts** for suspicious content
+- 🚫 **Blocking suspicious senders** (user prompted blocking)
 
 ### Model Evaluation:
 The detection model, sms-spam-model-v2, was tested using benign and smishing messages from the Kaggle dataset SMS Smishing Collection Data Set, and SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION dataset from Mendeley. The test dataset was preprocessed and sanitized to closely replicate the real conditions of SMS messages passed into our model
