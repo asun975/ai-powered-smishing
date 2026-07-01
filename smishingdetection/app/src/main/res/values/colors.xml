@@ -7,4 +7,13 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- App theme colors -->
+    <color name="screen_background">#F5F5F5</color>
+    <color name="card_background">#FFFFFF</color>
+    <color name="tab_background">#FFFFFF</color>
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="risk_high">#E53935</color>
+    <color name="risk_medium">#FB8C00</color>
 </resources>

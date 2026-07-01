@@ -18,32 +18,32 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Telephony
-import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import androidx.appcompat.app.AlertDialog
 
 class MainActivity : AppCompatActivity() {
-
+    private lateinit var urlAnalyzer: UrlAnalyzer
+    private lateinit var urlAnalyzerTextView: TextView
     private lateinit var smsTextView: TextView
     private lateinit var resultTextView: TextView
     private lateinit var explanationTextView: TextView
-
-    // URL sandbox
-    private lateinit var urlAnalyzerTextView: TextView
-    private lateinit var scanProgressBar: ProgressBar
-    private lateinit var urlAnalyzer: UrlAnalyzer
-
     private lateinit var classifier: SmishingClassifier
     private lateinit var explainer: LlmExplainer
+    private lateinit var db: DatabaseHelper
     private var smsReceiver: BroadcastReceiver? = null
     private var smsObserver: ContentObserver? = null
     private var lastProcessedSmsId: String? = null
+    private var isProcessing = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        Log.d("MainActivity", "========== APP STARTED ==========")
+        Log.d("MainActivity", "========== APP STARTED ===========")
 
         smsTextView = findViewById(R.id.smsTextView)
         resultTextView = findViewById(R.id.resultTextView)
@@ -55,33 +55,30 @@ class MainActivity : AppCompatActivity() {
 
         classifier = SmishingClassifier(apiUrl)
         explainer = LlmExplainer(llmUrl)
+        db = DatabaseHelper(this)
         urlAnalyzer = UrlAnalyzer()
 
         resultTextView.text = "⏳ Setting up..."
+
+        // FAB opens the suspicious messages inbox
+        findViewById<FloatingActionButton>(R.id.fabInbox).setOnClickListener {
+            startActivity(Intent(this, SuspiciousMessagesActivity::class.java))
+        }
 
         requestPermissions()
     }
 
     private fun requestPermissions() {
-        Log.d("MainActivity", "Checking permissions...")
-
-        Log.d("MainActivity", "Checking permissions")
-        // List of permissions to request
         val permissionsNeeded = mutableListOf<String>()
 
-        // Check app permission for receiving SMS
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
             != PackageManager.PERMISSION_GRANTED) {
             permissionsNeeded.add(Manifest.permission.RECEIVE_SMS)
         }
-
-        // Check app permission for reading SMS
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS)
             != PackageManager.PERMISSION_GRANTED) {
             permissionsNeeded.add(Manifest.permission.READ_SMS)
         }
-
-        // Check app permission for post notifications
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -100,14 +97,10 @@ class MainActivity : AppCompatActivity() {
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray
-    )
-    {
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
         if (requestCode == 999) {
-            val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
-
-            if (allGranted) {
+            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
                 startBothDetectionMethods()
             } else {
                 resultTextView.text = "❌ Permissions needed!"
@@ -115,69 +108,38 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Start BOTH broadcast receiver AND database observer
-     */
     private fun startBothDetectionMethods() {
         Log.d("MainActivity", "========== STARTING DUAL DETECTION ==========")
         resultTextView.text = "✅ Ready! Waiting for SMS..."
-
         startBroadcastReceiver()
         startDatabaseObserver()
     }
 
     private fun startBroadcastReceiver() {
-        Log.d("MainActivity", "Starting broadcast receiver...")
-
         smsReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                Log.d("MainActivity", "========== BROADCAST RECEIVED ==========")
-
-                try {
-                    if (intent?.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
-                        val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
-
-                        for (sms in messages) {
-                            val body = sms.displayMessageBody
-                            val sender = sms.displayOriginatingAddress ?: "Unknown"
-
-                            Log.d("MainActivity", "Broadcast detected: from $sender")
-
-                            val (classifierInput, llmInput, urls) = preprocessSmsMessage(body)
-                            processSmsMessage(sender, classifierInput, llmInput, "BROADCAST", urls)
-                        }
+                if (intent?.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
+                    val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
+                    for (sms in messages) {
+                        val body = sms.displayMessageBody
+                        val sender = sms.displayOriginatingAddress ?: "Unknown"
+                        val (classifierInput, llmInput, urls) = preprocessSmsMessage(body)
+                        processSmsMessage(sender, body, classifierInput, llmInput, "BROADCAST", urls)
                     }
-                } catch (e: Exception) {
-                    Log.e("MainActivity", "Broadcast error: ${e.message}", e)
                 }
             }
         }
-
-        val filter = IntentFilter(Telephony.Sms.Intents.SMS_RECEIVED_ACTION)
-
-        registerReceiver(smsReceiver, filter)
-
-        Log.d("MainActivity", "Broadcast receiver registered!")
+        registerReceiver(smsReceiver, IntentFilter(Telephony.Sms.Intents.SMS_RECEIVED_ACTION))
     }
 
     private fun startDatabaseObserver() {
-        Log.d("MainActivity", "Starting database observer...")
-
         smsObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
                 super.onChange(selfChange)
-                Log.d("MainActivity", "========== DATABASE CHANGED ==========")
                 checkLatestSms()
             }
         }
-
-        contentResolver.registerContentObserver(
-            Telephony.Sms.CONTENT_URI,
-            true,
-            smsObserver!!
-        )
-
-        Log.d("MainActivity", "Database observer registered!")
+        contentResolver.registerContentObserver(Telephony.Sms.CONTENT_URI, true, smsObserver!!)
     }
 
     private fun checkLatestSms() {
@@ -185,27 +147,19 @@ class MainActivity : AppCompatActivity() {
             val cursor: Cursor? = contentResolver.query(
                 Telephony.Sms.CONTENT_URI,
                 arrayOf(Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE),
-                null,
-                null,
+                null, null,
                 "${Telephony.Sms.DATE} DESC LIMIT 1"
             )
-
             cursor?.use {
                 if (it.moveToFirst()) {
-                    val idIndex = it.getColumnIndex(Telephony.Sms._ID)
-                    val senderIndex = it.getColumnIndex(Telephony.Sms.ADDRESS)
-                    val bodyIndex = it.getColumnIndex(Telephony.Sms.BODY)
-
-                    val smsId = if (idIndex >= 0) it.getString(idIndex) else null
-                    val sender = if (senderIndex >= 0) it.getString(senderIndex) else "Unknown"
-                    val body = if (bodyIndex >= 0) it.getString(bodyIndex) else ""
-
-                    Log.d("MainActivity", "Database check: ID=$smsId from $sender")
+                    val smsId = it.getString(it.getColumnIndexOrThrow(Telephony.Sms._ID))
+                    val sender = it.getString(it.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)) ?: "Unknown"
+                    val body = it.getString(it.getColumnIndexOrThrow(Telephony.Sms.BODY)) ?: ""
 
                     if (smsId != null && smsId != lastProcessedSmsId) {
                         lastProcessedSmsId = smsId
                         val (classifierInput, llmInput, urls) = preprocessSmsMessage(body)
-                        processSmsMessage(sender, classifierInput, llmInput, "DATABASE", urls)
+                        processSmsMessage(sender, body, classifierInput, llmInput, "DATABASE", urls)
                     }
                 }
             }
@@ -214,40 +168,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Preprocess SMS message for input to classifier and LLM
-     * Data sanitization: remove PII in classifier input and mask PII for LLM to keep context
-     * Remove unnecessary characters in classifier input to improve model performance
-     * Returns fully sanitized text, masked text, and list of urls found in text
-     **/
     private fun preprocessSmsMessage(body: String): Triple<String, String, List<String?>> {
-        val dataCleaner = Preprocessing
-        val classifierInput = dataCleaner.preprocessClassifierText(body)
-        val llmInput = dataCleaner.preprocessLlmText(body)
-        val urlList = dataCleaner.extractUrl(body)
-
-        return Triple(classifierInput, llmInput, urlList)
+        val preprocessor = Preprocessing
+        return Triple(
+            preprocessor.preprocessClassifierText(body),
+            preprocessor.preprocessLlmText(body),
+            preprocessor.extractUrl(body)
+        )
     }
 
-    /**
-     * Process SMS message (called by either broadcast OR database observer)
-     * Log message and change UI for user
-     * classify sms message
-     */
     private fun processSmsMessage(
         sender: String,
+        originalBody: String,
         classifierInput: String,
         llmInput: String,
         source: String,
         urls: List<String?>
     ) {
-        val url = urls.firstOrNull()
+        if (isProcessing) {
+            Log.d("MainActivity", "Already processing, skipping ($source)")
+            return
+        }
+        isProcessing = true
 
-        // Do not log SMS text
         Log.d("MainActivity", "---------- PROCESSING SMS ($source) ----------")
         Log.d("MainActivity", "From: $sender")
-        Log.d("MainActivity", "PII removed (classifier): $classifierInput")
-        Log.d("MainActivity", "PII masked (LLM): $llmInput")
 
         runOnUiThread {
             smsTextView.text = "From: $sender\n\nMessage: $llmInput"
@@ -255,39 +200,68 @@ class MainActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            classifyMessage(classifierInput, llmInput, url)
+            classifyMessage(sender, originalBody, classifierInput, llmInput, urls.firstOrNull())
+            isProcessing = false
         }
-        Log.d("MainActivity", "========== PROCESSING SMS END ==========")
     }
 
     private fun getRiskScore(label: String, confidence: Float): Pair<Float, String> {
-        val riskScore = if (label == "SPAM") {
-            confidence
-        } else {
-            (1 - confidence)
-        }
-
-        val riskCategory = if (riskScore > 0.75) {
-            "HIGH"
-        } else if (riskScore >= 0.30 ) {
-            "MEDIUM"
-        } else {
-            "LOW"
+        val riskScore = if (label == "SPAM") confidence else (1 - confidence)
+        val riskCategory = when {
+            riskScore > 0.75 -> "HIGH"
+            riskScore >= 0.30 -> "MEDIUM"
+            else -> "LOW"
         }
         return Pair(riskScore, riskCategory)
     }
 
-    private suspend fun classifyMessage(classifierInput: String, llmInput: String, url: String?) {
+    private fun showSmishingDialog(
+        sender: String,
+        originalBody: String,
+        riskScorePercent: Float,
+        riskCategory: String,
+        explanation: String,
+        scanResult: String,
+        messageId: Long,
+        status: String,
+        timestamp: String
+    ) {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("⚠️ Suspicious SMS Detected")
+        builder.setMessage(
+            "This message may be a phishing attempt.\n\n" +
+                    "From: $sender\n" +
+                    "Risk: $riskCategory (${String.format("%.0f", riskScorePercent)}%)\n\n" +
+                    "Reason: $explanation"
+        )
+        builder.setPositiveButton("View Details") { _, _ ->
+            val intent = Intent(this, MessageDetailActivity::class.java).apply {
+                putExtra("phone", sender)
+                putExtra("date", timestamp)
+                putExtra("message", originalBody)
+                putExtra("risk_score", riskScorePercent.toString())
+                putExtra("status", status)
+                putExtra("explanation", explanation)
+                putExtra("id", messageId.toString())
+                putExtra("url_scan_result", scanResult)
+            }
+            startActivity(intent)
+        }
+        builder.setNegativeButton("Dismiss", null)
+        builder.show()
+    }
 
+    private suspend fun classifyMessage(
+        sender: String,
+        originalBody: String,
+        classifierInput: String,
+        llmInput: String,
+        url: String?
+    ) {
         try {
-            Log.d("MainActivity", "========== CLASSIFICATION START ==========")
             val (label, confidence) = classifier.classify(classifierInput)
             val (riskScore, riskCategory) = getRiskScore(label, confidence)
 
-            Log.d("MainActivity", "Result: $label ($riskScore%)")
-            Log.d("MainActivity", "========== CLASSIFICATION END ==========")
-            Log.d("MainActivity", "========== URL ANALYZER START ==========")
-            val scanResult = urlAnalyzer.analyzeUrl(url)
             if (label == "ERROR") {
                 runOnUiThread {
                     resultTextView.text = "❌ Error analyzing\nCheck internet"
@@ -296,49 +270,36 @@ class MainActivity : AppCompatActivity() {
                 return
             }
 
-            // Show classification result while LLM loads
+            val riskScorePercent = riskScore * 100
+
             runOnUiThread {
                 when (riskCategory) {
                     "HIGH" -> {
                         resultTextView.text = "⚠️ Detected High Risk of Smishing!\n\n${
-                            String.format(
-                                "%2.2f", 
-                                riskScore * 100
-                            )
-                        }% Risk Score"
+                            String.format("%2.2f", riskScorePercent)}% Risk Score"
                         resultTextView.setTextColor(getColor(android.R.color.holo_red_light))
                         explanationTextView.text = "💬 Getting explanation..."
                         explanationTextView.setTextColor(getColor(android.R.color.darker_gray))
-                        Toast.makeText(this@MainActivity, "SMISHING DETECTED!", Toast.LENGTH_LONG).show()
-                    }
-                    "LOW" -> {
-                        resultTextView.text = "✅ Low Risk of Smishing\n\n${
-                            String.format(
-                                "%2.2f",
-                                riskScore * 100
-                            )
-                        }% Risk Score"
-                        resultTextView.setTextColor(getColor(android.R.color.holo_green_dark))
-                        explanationTextView.text = ""
                     }
                     "MEDIUM" -> {
                         resultTextView.text = "⚠️ Signs of Smishing Detected\n\n${
-                            String.format(
-                                "%2.2f",
-                                riskScore * 100
-                            )
-                        }% Risk Score"
-                        resultTextView.setTextColor(getColor(android.R.color.holo_red_light))
+                            String.format("%2.2f", riskScorePercent)}% Risk Score"
+                        resultTextView.setTextColor(getColor(android.R.color.holo_orange_dark))
                         explanationTextView.text = "💬 Getting explanation..."
                         explanationTextView.setTextColor(getColor(android.R.color.darker_gray))
-                        Toast.makeText(this@MainActivity, "SMISHING DETECTED!", Toast.LENGTH_LONG).show()
+                    }
+                    "LOW" -> {
+                        resultTextView.text = "✅ Low Risk of Smishing\n\n${
+                            String.format("%2.2f", riskScorePercent)}% Risk Score"
+                        resultTextView.setTextColor(getColor(android.R.color.holo_green_dark))
+                        explanationTextView.text = ""
                     }
                 }
             }
-
-            // Call LLM Explainer for High/Medium risk messages
+            // Get LLM explanation for medium/high risk
+            var explanation = ""
             if (riskCategory == "HIGH" || riskCategory == "MEDIUM") {
-                val explanation = explainer.explain(llmInput, label, riskScore)
+                explanation = explainer.explain(llmInput, label, riskScore)
                 Log.d("MainActivity", "Explanation: $explanation")
 
                 runOnUiThread {
@@ -346,12 +307,66 @@ class MainActivity : AppCompatActivity() {
                     explanationTextView.setTextColor(getColor(android.R.color.holo_red_light))
                 }
             }
+            // After getting the explanation, call the URL analyzer:
+            val scanResult = urlAnalyzer.analyzeUrl(url)
 
-            // API call to urlscan.io
+            // Then display it somewhere — add a TextView for it, or append to explanationTextView:
             runOnUiThread {
-                urlAnalyzerTextView.text = scanResult
+                if (!scanResult.isNullOrBlank() && scanResult != "No Urls found") {
+                    urlAnalyzerTextView.text = "🔗 URL Scan: $scanResult"
+                }
             }
-            Log.d("MainActivity", "========== URL ANALYZER END ==========")
+            // Save to database for MEDIUM (caution) and HIGH (quarantined) risk
+            if (riskCategory == "MEDIUM" || riskCategory == "HIGH") {
+                val timestamp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                } else {
+                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+                        .format(java.util.Date())
+                }
+                val prediction = if (label == "SPAM") "SPAM" else "SAFE"
+                val newMessageId = db.insertMessage(
+                    phoneNumber = sender,
+                    date = timestamp,
+                    message = originalBody,
+                    riskScore = riskScorePercent.toDouble(),
+                    prediction = prediction,
+                    explanation = explanation,
+                    urlScanResult = scanResult ?: ""
+                )
+                val status = DatabaseHelper.statusFromScore(riskScorePercent.toDouble())
+                Log.d("MainActivity", "Saved message to DB: $riskCategory")
+
+                if (AppLifecycleTracker.isAppInForeground) {
+                    runOnUiThread {
+                        showSmishingDialog(
+                            sender = sender,
+                            originalBody = originalBody,
+                            riskScorePercent = riskScorePercent,
+                            riskCategory = riskCategory,
+                            explanation = explanation,
+                            scanResult = scanResult ?: "",
+                            messageId = newMessageId,
+                            status = status,
+                            timestamp = timestamp
+                        )
+                    }
+                } else {
+                    NotificationHelper.sendSmishingNotification(
+                        context = this,
+                        sender = sender,
+                        riskCategory = riskCategory,
+                        riskScorePercent = riskScorePercent,
+                        explanation = explanation,
+                        messageId = newMessageId,
+                        originalBody = originalBody,
+                        timestamp = timestamp,
+                        scanResult = scanResult ?: "",
+                        status = status
+                    )
+                }
+            }
+
         } catch (e: Exception) {
             Log.e("MainActivity", "Classification error: ${e.message}", e)
             runOnUiThread {
@@ -362,23 +377,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-
         smsReceiver?.let {
-            try {
-                unregisterReceiver(it)
-                Log.d("MainActivity", "Broadcast receiver unregistered")
-            } catch (e: Exception) {
-                Log.e("MainActivity", "Error unregistering receiver: ${e.message}")
-            }
+            try { unregisterReceiver(it) } catch (e: Exception) { }
         }
-
         smsObserver?.let {
-            try {
-                contentResolver.unregisterContentObserver(it)
-                Log.d("MainActivity", "Database observer unregistered")
-            } catch (e: Exception) {
-                Log.e("MainActivity", "Error unregistering observer: ${e.message}")
-            }
+            try { contentResolver.unregisterContentObserver(it) } catch (e: Exception) { }
         }
     }
 }
