@@ -23,6 +23,31 @@ We evaluated the model using scikit learn metrics for accuracy, F1 score, precis
 - **Precision**: 94.5%
 - **Recall**: 97.6%
 
+## Project Structure
+```
+.
+├── hugging-face/
+│   ├── distilbert/
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
+│   └── groq-llama/
+│       ├── app.py
+│       ├── Dockerfile
+│       └── requirements.txt
+├── smishingdetection
+├── src/
+│   ├── distilbert_model_prototype.py
+│   ├── prepare_data_nlp.py
+│   ├── preprocessing.py
+│   ├── test_model.py
+│   ├── test_preprocessing.py
+│   └── train_model.py
+├── .gitignore
+├── README.md
+└── requirements.txt
+```
+
 ## Set-up Project
 ```bash
 git clone https://github.com:asun975/ai-powered-smishing.git
@@ -55,17 +80,6 @@ train_model.py provides additional training on URLs using a kaggle dataset for m
 3. Update app.py from hugging-face/groq-llama and hugging-face/distilbert
 - Add secret: HF_TOKEN = your HF token
 4. Deploy (5-10 min build time)
-5. Create app.properties in smishingdetection project root. Make sure app.properties is added to your .gitignore
-
-```
-## This file loads your custom API urls for the classifier model and LLM
-#
-# This file should *NOT* be checked into Version Control Systems,
-# as it contains information specific to your local configuration.
-
-CLASSIFIER_API_URL = "your api URL for classifier"
-LLM_API_URL = "your api URL for LLM"
-```
 
 **Classifier API Endpoint**
 POST /classify
@@ -77,35 +91,33 @@ POST /explain
 - Expects: JSON {"text": "cleaned SMS text", "classification": "SPAM" or "SAFE", "risk_score": 0.87 }
 - Returns: JSON { "explanation": explanation, "classification": classification, "risk_score": risk_score, "version": "model_version"}
 
-## Project Structure
+## Android App
+The `smishingdetection/` folder contains the Android Studio project source.
+
+### Setup in Android Studio
+
+1. Import the project `ai-power-smishing/smishingdetection`
+2. Create app.properties in project root and add API endpoints for the classifier, LLM and URL APIs
+
 ```
-.
-├── hugging-face/
-│   ├── distilbert/
-│   │   ├── app.py
-│   │   ├── Dockerfile
-│   │   └── requirements.txt
-│   └── groq-llama/
-│       ├── app.py
-│       ├── Dockerfile
-│       └── requirements.txt
-├── smishingdetection
-├── src/
-│   ├── distilbert_model_prototype.py
-│   ├── prepare_data_nlp.py
-│   ├── preprocessing.py
-│   ├── test_model.py
-│   ├── test_preprocessing.py
-│   └── train_model.py
-├── .gitignore
-├── README.md
-└── requirements.txt
+## This file loads your custom API urls for the classifier model and LLM
+#
+# This file should *NOT* be checked into Version Control Systems,
+# as it contains information specific to your local configuration.
+
+CLASSIFIER_API_URL = "your api URL for classifier"
+LLM_API_URL = "your api URL for LLM"
+SCAN_API_URL = "http://10.0.2.2:8000"
 ```
+
+3. Sync Gradle
+4. Make sure the Python API is running on your PC (`ai-powered-smishing/fastapi-url-analyzer/api.py`)
+5. Click the green **Run** button → select your emulator
 
 ## Known issues or limitations
 - Model bias due to limited or outdated dataset for mobile smishing and URL detection
 - False positive/negatives and LLM hallucination
-- Mobile resource contraints like battery, storage, and CPU/GPU memory
+- Mobile resource constraints like battery, storage, and CPU/GPU memory
 - Android limitations on non-default apps ability to delete and block messages.
 
 ## Acknowledgements
