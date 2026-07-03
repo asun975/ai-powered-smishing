@@ -223,7 +223,7 @@ __marimo__/
 
 # Ignore folders
 models/
-data/
+./data/
 results/
 logs/
 plots/
