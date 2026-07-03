@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.devtools.ksp")
 }
 
 val appProperties = Properties()
@@ -65,6 +66,17 @@ android {
 }
 
 dependencies {
+    val roomVersion = "2.8.4" // KSP for Room Persistence Library (DAO)
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-common:$roomVersion")
+    // If this project uses any Kotlin source, use Kotlin Symbol Processing (KSP)
+    ksp("androidx.room:room-runtime:$roomVersion")
+    ksp("androidx.room:room-compiler:$roomVersion")
+    // optional - Kotlin Extensions and Coroutines support for Room
+    implementation("androidx.room:room-ktx:${roomVersion}")
+    // optional - Test helpers
+    testImplementation("androidx.room:room-testing:${roomVersion}")
+
     implementation("androidx.lifecycle:lifecycle-process:2.7.0")
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-scalars:2.9.0")
