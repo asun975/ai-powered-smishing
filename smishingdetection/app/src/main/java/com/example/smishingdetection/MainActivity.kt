@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.appcompat.app.AlertDialog
+import com.example.smishingdetection.data.AnalyzedMessage
 
 class MainActivity : AppCompatActivity() {
     private lateinit var urlAnalyzer: UrlAnalyzer
@@ -33,11 +34,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var explanationTextView: TextView
     private lateinit var classifier: SmishingClassifier
     private lateinit var explainer: LlmExplainer
-    private lateinit var db: DatabaseHelper
     private var smsReceiver: BroadcastReceiver? = null
     private var smsObserver: ContentObserver? = null
     private var lastProcessedSmsId: String? = null
     private var isProcessing = false
+    private lateinit var db: DatabaseHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,20 +46,24 @@ class MainActivity : AppCompatActivity() {
 
         Log.d("MainActivity", "========== APP STARTED ===========")
 
+        // Set up main UI
         smsTextView = findViewById(R.id.smsTextView)
         resultTextView = findViewById(R.id.resultTextView)
         explanationTextView = findViewById(R.id.explanationTextView)
         urlAnalyzerTextView = findViewById(R.id.urlAnalyzerTextView)
+        resultTextView.text = "⏳ Setting up..."
 
+        // API links
         val apiUrl = BuildConfig.CLASSIFIER_API_URL
         val llmUrl = BuildConfig.LLM_API_URL
 
+        // Smishing Detector Database
+        db = DatabaseHelper(application)
+
+        // Global instances
         classifier = SmishingClassifier(apiUrl)
         explainer = LlmExplainer(llmUrl)
-        db = DatabaseHelper(this)
         urlAnalyzer = UrlAnalyzer()
-
-        resultTextView.text = "⏳ Setting up..."
 
         // FAB opens the suspicious messages inbox
         findViewById<FloatingActionButton>(R.id.fabInbox).setOnClickListener {
@@ -195,7 +200,7 @@ class MainActivity : AppCompatActivity() {
         Log.d("MainActivity", "From: $sender")
 
         runOnUiThread {
-            smsTextView.text = "From: $sender\n\nMessage: $llmInput"
+            smsTextView.text = "From: $sender\n\nAnalyzedMessage: $llmInput"
             resultTextView.text = "🔍 Analyzing..."
         }
 
@@ -216,34 +221,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSmishingDialog(
-        sender: String,
-        originalBody: String,
-        riskScorePercent: Float,
-        riskCategory: String,
-        explanation: String,
-        scanResult: String,
-        messageId: Long,
-        status: String,
-        timestamp: String
+        analyzedMessage: AnalyzedMessage
     ) {
+        val riskScorePercent = analyzedMessage.riskScore * 100
         val builder = AlertDialog.Builder(this)
         builder.setTitle("⚠️ Suspicious SMS Detected")
         builder.setMessage(
             "This message may be a phishing attempt.\n\n" +
-                    "From: $sender\n" +
-                    "Risk: $riskCategory (${String.format("%.0f", riskScorePercent)}%)\n\n" +
-                    "Reason: $explanation"
+                    "From: ${analyzedMessage.phoneNumber}\n" +
+                    "Risk: ${analyzedMessage.status} (${String.format("%.0f", riskScorePercent)}%)\n\n" +
+                    "Reason: ${analyzedMessage.explanation}"
         )
         builder.setPositiveButton("View Details") { _, _ ->
             val intent = Intent(this, MessageDetailActivity::class.java).apply {
-                putExtra("phone", sender)
-                putExtra("date", timestamp)
-                putExtra("message", originalBody)
+                putExtra("phone", analyzedMessage.phoneNumber)
+                putExtra("date", analyzedMessage.date)
+                putExtra("message", analyzedMessage.message)
                 putExtra("risk_score", riskScorePercent.toString())
-                putExtra("status", status)
-                putExtra("explanation", explanation)
-                putExtra("id", messageId.toString())
-                putExtra("url_scan_result", scanResult)
+                putExtra("status", analyzedMessage.status)
+                putExtra("explanation", analyzedMessage.explanation)
+                putExtra("id", analyzedMessage.id.toString())
+                putExtra("url_scan_result", analyzedMessage.urlScanResult)
             }
             startActivity(intent)
         }
@@ -324,45 +322,32 @@ class MainActivity : AppCompatActivity() {
                     java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
                         .format(java.util.Date())
                 }
-                val prediction = if (label == "SPAM") "SPAM" else "SAFE"
-                val newMessageId = db.insertMessage(
+                val newMessage = AnalyzedMessage(
+                    id = 0, // database will auto-generate message ID
                     phoneNumber = sender,
                     date = timestamp,
                     message = originalBody,
                     riskScore = riskScorePercent.toDouble(),
-                    prediction = prediction,
                     explanation = explanation,
                     urlScanResult = scanResult ?: ""
                 )
-                val status = DatabaseHelper.statusFromScore(riskScorePercent.toDouble())
+                val newMessageId = db.insertMessage(newMessage)
                 Log.d("MainActivity", "Saved message to DB: $riskCategory")
 
                 if (AppLifecycleTracker.isAppInForeground) {
                     runOnUiThread {
-                        showSmishingDialog(
-                            sender = sender,
-                            originalBody = originalBody,
-                            riskScorePercent = riskScorePercent,
-                            riskCategory = riskCategory,
-                            explanation = explanation,
-                            scanResult = scanResult ?: "",
-                            messageId = newMessageId,
-                            status = status,
-                            timestamp = timestamp
-                        )
+                        lifecycleScope.launch {
+                            showSmishingDialog(
+                                db.getMessage(newMessageId)
+                            )
+                        }
                     }
                 } else {
                     NotificationHelper.sendSmishingNotification(
                         context = this,
-                        sender = sender,
+                        analyzedMessage = db.getMessage(newMessageId),
                         riskCategory = riskCategory,
                         riskScorePercent = riskScorePercent,
-                        explanation = explanation,
-                        messageId = newMessageId,
-                        originalBody = originalBody,
-                        timestamp = timestamp,
-                        scanResult = scanResult ?: "",
-                        status = status
                     )
                 }
             }

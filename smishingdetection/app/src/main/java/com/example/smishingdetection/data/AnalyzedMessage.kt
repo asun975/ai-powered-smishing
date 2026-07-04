@@ -32,7 +32,7 @@ import kotlinx.coroutines.flow.Flow
  */
 @Entity(tableName = "analyzed_messages")
 data class AnalyzedMessage(
-    @PrimaryKey(autoGenerate = true) val id: Int,
+    @PrimaryKey(autoGenerate = true) val id: Long,
     @ColumnInfo(name = "phone_number") val phoneNumber: String,
     @ColumnInfo(name = "date") val date: String,
     @ColumnInfo(name = "message") val message: String,

@@ -11,8 +11,12 @@ class DatabaseHelper(application: Application) {
     private val messageDao = db.analyzedMessageDao()
     private val phoneDao = db.blockedPhoneNumberDao()
 
-    suspend fun insertMessage(id: Long): Long {
-        return messageDao.insertMessage(messageDao.getById(id))
+    suspend fun insertMessage(message: AnalyzedMessage): Long {
+        return messageDao.insertMessage(message)
+    }
+
+    suspend fun getMessage(id: Long): AnalyzedMessage {
+        return messageDao.getById(id)
     }
 
     fun getAllMessages(): Flow<List<AnalyzedMessage>> {
@@ -27,19 +31,16 @@ class DatabaseHelper(application: Application) {
         messageDao.delete(messageDao.getById(id))
     }
 
-    fun getCautionMessages(): Flow<List<AnalyzedMessage>> {
-        return messageDao.getbyStatus("caution").distinctUntilChanged()
-    }
-
-    fun getQuarantineMessages(): Flow<List<AnalyzedMessage>> {
-        return messageDao.getbyStatus("quarantine").distinctUntilChanged()
+    fun getByStatus(status:String): Flow<List<AnalyzedMessage>> {
+        return messageDao.getbyStatus(status).distinctUntilChanged()
     }
 
     fun countByStatus(status: String): Flow<Int> {
         return messageDao.countByStatus(status).distinctUntilChanged()
     }
 
-    suspend fun blockPhoneNumber(phone: BlockedPhoneNumber) {
+    suspend fun blockPhoneNumber(phoneNumber: String) {
+        val phone = BlockedPhoneNumber(phoneNumber)
         phoneDao.insertPhoneNumber(phone)
     }
 
@@ -47,7 +48,7 @@ class DatabaseHelper(application: Application) {
         phoneDao.delete(phone)
     }
 
-    suspend fun checkBlockedPhone(phone: BlockedPhoneNumber): Boolean {
+    suspend fun checkBlockedPhone(phone: String): Boolean {
         return phoneDao.exists(phone)
     }
 }

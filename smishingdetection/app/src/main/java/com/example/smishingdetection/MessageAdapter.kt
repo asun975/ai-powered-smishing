@@ -6,11 +6,14 @@ import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.example.smishingdetection.data.AnalyzedMessage
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.count
 
 class MessageAdapter(
-    private val messages: MutableList<Map<String, String>>,
-    private val onItemClick: (Map<String, String>) -> Unit,
-    private val onMenuClick: (Map<String, String>, View) -> Unit
+    private var messages: List<AnalyzedMessage>,
+    private val onItemClick: (AnalyzedMessage) -> Unit,
+    private val onMenuClick: (AnalyzedMessage, View) -> Unit
 ) : RecyclerView.Adapter<MessageAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -29,21 +32,20 @@ class MessageAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val msg = messages[position]
 
-        holder.dateText.text = msg[DatabaseHelper.COL_DATE] ?: ""
-        holder.messageText.text = msg[DatabaseHelper.COL_MESSAGE] ?: ""
+        holder.dateText.text = msg.date ?: ""
+        holder.messageText.text = msg.message ?: ""
 
-        val score = msg[DatabaseHelper.COL_RISK_SCORE]?.toDoubleOrNull() ?: 0.0
+        val score = msg.riskScore
         holder.riskScore.text = String.format("%.0f%%", score)
 
         holder.itemView.setOnClickListener { onItemClick(msg) }
         holder.menuButton.setOnClickListener { onMenuClick(msg, holder.menuButton) }
     }
 
-    override fun getItemCount() = messages.size
+    override fun getItemCount() = messages.count()
 
-    fun updateData(newMessages: List<Map<String, String>>) {
-        messages.clear()
-        messages.addAll(newMessages)
+    fun updateData(newMessages: List<AnalyzedMessage>) {
+        messages = newMessages
         notifyDataSetChanged()
     }
 }

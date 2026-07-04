@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import com.example.smishingdetection.data.AnalyzedMessage
 
 object NotificationHelper {
 
@@ -29,31 +30,25 @@ object NotificationHelper {
 
     fun sendSmishingNotification(
         context: Context,
-        sender: String,
+        analyzedMessage: AnalyzedMessage,
         riskCategory: String,
-        riskScorePercent: Float,
-        explanation: String,
-        messageId: Long,
-        originalBody: String,
-        timestamp: String,
-        scanResult: String,
-        status: String
+        riskScorePercent: Float
     ) {
         val intent = Intent(context, MessageDetailActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("phone", sender)
-            putExtra("date", timestamp)
-            putExtra("message", originalBody)
-            putExtra("risk_score", riskScorePercent.toString())
-            putExtra("status", status)
-            putExtra("explanation", explanation)
-            putExtra("id", messageId.toString())
-            putExtra("url_scan_result", scanResult)
+            putExtra("phone", analyzedMessage.phoneNumber)
+            putExtra("date", analyzedMessage.date)
+            putExtra("message", analyzedMessage.message)
+            putExtra("risk_score", analyzedMessage.riskScore)
+            putExtra("status", analyzedMessage.status)
+            putExtra("explanation", analyzedMessage.explanation)
+            putExtra("id", analyzedMessage.id)
+            putExtra("url_scan_result", analyzedMessage.urlScanResult)
         }
 
         val pendingIntent = PendingIntent.getActivity(
             context,
-            messageId.toInt(),
+            analyzedMessage.id.toInt(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -61,15 +56,15 @@ object NotificationHelper {
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle("⚠️ $riskCategory Risk Smishing Detected")
-            .setContentText("From: $sender — Tap to view details")
+            .setContentText("From: ${analyzedMessage.phoneNumber} — Tap to view details")
             .setStyle(NotificationCompat.BigTextStyle()
-                .bigText("From: $sender\nRisk: $riskCategory (${String.format("%.0f", riskScorePercent)}%)\n\n$explanation"))
+                .bigText("From: ${analyzedMessage.phoneNumber}\nRisk: $riskCategory (${String.format("%.0f", riskScorePercent)}%)\n\n${analyzedMessage.explanation}"))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(messageId.toInt(), notification)
+        manager.notify(analyzedMessage.id.toInt(), notification)
     }
 }

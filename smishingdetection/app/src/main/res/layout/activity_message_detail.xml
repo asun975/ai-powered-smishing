@@ -93,7 +93,7 @@
 
         </androidx.cardview.widget.CardView>
 
-        <!-- Message body -->
+        <!-- AnalyzedMessage body -->
         <androidx.cardview.widget.CardView
             xmlns:app="http://schemas.android.com/apk/res-auto"
             android:layout_width="match_parent"

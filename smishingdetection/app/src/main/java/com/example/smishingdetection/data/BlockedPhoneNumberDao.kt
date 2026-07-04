@@ -18,5 +18,5 @@ interface BlockedPhoneNumberDao{
     fun getAll(): List<BlockedPhoneNumber>
 
     @Query("SELECT EXISTS(SELECT 1 FROM blockedPhoneNumbers WHERE phone = :phone)")
-    suspend fun exists(phone: BlockedPhoneNumber): Boolean
+    suspend fun exists(phone: String): Boolean
 }

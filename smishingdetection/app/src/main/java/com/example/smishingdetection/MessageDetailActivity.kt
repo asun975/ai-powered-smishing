@@ -1,36 +1,34 @@
 package com.example.smishingdetection
 
 import android.app.AlertDialog
-import android.content.Intent
-import android.net.Uri
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.os.Bundle
+import android.telecom.TelecomManager
 import android.view.MenuItem
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.telecom.TelecomManager
+import androidx.lifecycle.lifecycleScope
+import com.example.smishingdetection.data.BlockedPhoneNumber
+import kotlinx.coroutines.launch
 
 class MessageDetailActivity : AppCompatActivity() {
-
-    private lateinit var db: DatabaseHelper
     private var messageId: Long = -1
     private var status: String = "caution"
     private var phoneNumber: String = ""
+    private val db = DatabaseHelper(application)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_message_detail)
 
         supportActionBar?.apply {
-            title = "Message Detail"
+            title = "AnalyzedMessage Detail"
             setDisplayHomeAsUpEnabled(true)
         }
-
-        db = DatabaseHelper(this)
 
         // Read extras
         phoneNumber = intent.getStringExtra("phone") ?: "Unknown"
@@ -66,11 +64,15 @@ class MessageDetailActivity : AppCompatActivity() {
         btnAction.text = if (status == "caution") "Quarantine" else "Mark as Safe"
 
         btnAction.setOnClickListener {
-            handleActionButton()
+            lifecycleScope.launch {
+                handleActionButton()
+            }
         }
 
         btnBlock.setOnClickListener {
-            blockNumber()
+            lifecycleScope.launch {
+                blockNumber()
+            }
         }
 
         btnDelete.setOnClickListener {
@@ -78,45 +80,61 @@ class MessageDetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleActionButton() {
+    private suspend fun handleActionButton() {
         if (status == "caution") {
             // Move to quarantine — update status in DB (use db.updateStatus function created & also add the toast to notify the user of the changes)
-            //TODO
-            Toast.makeText(this, "Coming soon", Toast.LENGTH_SHORT).show()
+            db.quarantineMessage(messageId)
+            Toast.makeText(this, "AnalyzedMessage moved to quarantine!", Toast.LENGTH_SHORT).show()
         } else {
             // Mark as safe — delete from suspicious DB
-            db.deleteMessage(messageId)
-            Toast.makeText(this, "Message marked as safe", Toast.LENGTH_SHORT).show()
+            db.markAsSafe(messageId)
+            Toast.makeText(this, "AnalyzedMessage marked as safe", Toast.LENGTH_SHORT).show()
         }
         finish()
     }
 
-    private fun blockNumber() {
-        AlertDialog.Builder(this)
-            .setTitle("Block Number")
-            .setMessage("$phoneNumber will be copied to your clipboard. You can paste it into the block list that opens.")
-            .setPositiveButton("Open Block List") { _, _ ->
-                // Copy number to clipboard
-                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("phone number", phoneNumber)
-                clipboard.setPrimaryClip(clip)
+    private suspend fun blockNumber() {
+        if(db.checkBlockedPhone(phoneNumber)) {
+            AlertDialog.Builder(this)
+                .setTitle("Block Number")
+                .setMessage("$phoneNumber is already in Smishing Detector's Block list!")
+                .setPositiveButton("Ok") { _, _ ->
+                    finish()
+                }
+                .show()
+        } else {
+            AlertDialog.Builder(this)
+                .setTitle("Block Number")
+                .setMessage("$phoneNumber will be copied to your clipboard. You can paste it into the block list that opens.")
+                .setPositiveButton("Open Block List") { _, _ ->
+                    lifecycleScope.launch {
+                        // Copy number to clipboard
+                        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("phone number", phoneNumber)
+                        clipboard.setPrimaryClip(clip)
 
-                // Open system block list
-                val telecomManager = getSystemService(TELECOM_SERVICE) as TelecomManager
-                val blockIntent = telecomManager.createManageBlockedNumbersIntent()
-                startActivity(blockIntent)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+                        // Open system block list
+                        val telecomManager = getSystemService(TELECOM_SERVICE) as TelecomManager
+                        startActivity(telecomManager.createManageBlockedNumbersIntent(), null)
+
+                        // Insert new row into app block list
+                        db.blockPhoneNumber(phoneNumber)
+                    }
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
     }
 
     private fun confirmDelete() {
         AlertDialog.Builder(this)
-            .setTitle("Delete Message")
+            .setTitle("Delete AnalyzedMessage")
             .setMessage("Remove this message from the log?")
             .setPositiveButton("Delete") { _, _ ->
-                db.deleteMessage(messageId)
-                Toast.makeText(this, "Message deleted", Toast.LENGTH_SHORT).show()
+                lifecycleScope.launch {
+                    this@MessageDetailActivity.db.markAsSafe(messageId)
+                }
+                Toast.makeText(this, "AnalyzedMessage deleted", Toast.LENGTH_SHORT).show()
                 finish()
             }
             .setNegativeButton("Cancel", null)

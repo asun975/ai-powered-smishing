@@ -8,7 +8,7 @@
 
     <!-- Tab bar: Caution | Quarantine -->
 
-    <!-- Message list -->
+    <!-- AnalyzedMessage list -->
 
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tabLayout"
