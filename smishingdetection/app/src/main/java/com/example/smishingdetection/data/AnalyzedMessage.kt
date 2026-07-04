@@ -41,6 +41,6 @@ data class AnalyzedMessage(
         riskScore >= 70.0 -> "quarantine"
         else -> "caution"
     },
-    @ColumnInfo(name = "explanation") val explanation: String,
-    @ColumnInfo(name = "url_scan_result") val urlScanResult: String
+    @ColumnInfo(name = "explanation", defaultValue = "") val explanation: String = "",
+    @ColumnInfo(name = "url_scan_result", defaultValue = "") val urlScanResult: String = ""
 )

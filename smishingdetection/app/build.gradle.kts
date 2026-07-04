@@ -33,6 +33,10 @@ android {
     room {
         schemaDirectory("$projectDir/schemas")
     }
+    sourceSets {
+        // Adds exported schema location as test app assets.
+        getByName("androidTest").assets.directories.add("$projectDir/schemas")
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -67,6 +71,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.junit.ktx)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.common)
     // If this project uses any Kotlin source, use Kotlin Symbol Processing (KSP)

@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 3,
-    "identityHash": "2575aac982bf077d0257ca4a4b63d19e",
+    "identityHash": "033d1e45ec8de8581be7b013f5bac386",
     "entities": [
       {
         "tableName": "analyzed_messages",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `phone_number` TEXT NOT NULL, `date` TEXT NOT NULL, `message` TEXT NOT NULL, `risk_score` REAL NOT NULL, `status` TEXT NOT NULL, `explanation` TEXT NOT NULL, `url_scan_result` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `phone_number` TEXT NOT NULL, `date` TEXT NOT NULL, `message` TEXT NOT NULL, `risk_score` REAL NOT NULL, `status` TEXT NOT NULL, `explanation` TEXT NOT NULL DEFAULT '', `url_scan_result` TEXT NOT NULL DEFAULT '')",
         "fields": [
           {
             "fieldPath": "id",
@@ -48,13 +48,15 @@
             "fieldPath": "explanation",
             "columnName": "explanation",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": true,
+            "defaultValue": "''"
           },
           {
             "fieldPath": "urlScanResult",
             "columnName": "url_scan_result",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": true,
+            "defaultValue": "''"
           }
         ],
         "primaryKey": {
@@ -85,7 +87,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2575aac982bf077d0257ca4a4b63d19e')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '033d1e45ec8de8581be7b013f5bac386')"
     ]
   }
 }
