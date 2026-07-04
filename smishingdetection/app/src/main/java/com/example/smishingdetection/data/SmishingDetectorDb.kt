@@ -1,11 +1,20 @@
 package com.example.smishingdetection.data
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Database
+import androidx.room.RenameTable
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [AnalyzedMessage::class, BlockedPhoneNumber::class], version = 1, exportSchema = false)
+@Database(
+    entities = [AnalyzedMessage::class, BlockedPhoneNumber::class],
+    version = 3,
+    exportSchema = true,
+    autoMigrations = [
+        AutoMigration(2, 3)
+    ]
+)
 abstract class SmishingDetectorDb : RoomDatabase() {
     abstract fun analyzedMessageDao(): AnalyzedMessageDao
     abstract fun blockedPhoneNumberDao(): BlockedPhoneNumberDao

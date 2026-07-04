@@ -4,8 +4,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp")
+    id("androidx.room")
 }
-
 val appProperties = Properties()
 val appPropertiesFile = File(rootProject.rootDir, "app.properties")
 if (appPropertiesFile.exists() && appPropertiesFile.isFile) {
@@ -21,7 +21,6 @@ android {
             minorApiLevel = 1
         }
     }
-
     defaultConfig {
         applicationId = "com.example.smishingdetection"
         minSdk = 24
@@ -31,7 +30,9 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-
+    room {
+        schemaDirectory("$projectDir/schemas")
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -66,16 +67,15 @@ android {
 }
 
 dependencies {
-    val roomVersion = "2.8.4" // KSP for Room Persistence Library (DAO)
-    implementation("androidx.room:room-runtime:$roomVersion")
-    implementation("androidx.room:room-common:$roomVersion")
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.common)
     // If this project uses any Kotlin source, use Kotlin Symbol Processing (KSP)
-    ksp("androidx.room:room-runtime:$roomVersion")
-    ksp("androidx.room:room-compiler:$roomVersion")
+    ksp(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
     // optional - Kotlin Extensions and Coroutines support for Room
-    implementation("androidx.room:room-ktx:${roomVersion}")
+    implementation(libs.androidx.room.ktx)
     // optional - Test helpers
-    testImplementation("androidx.room:room-testing:${roomVersion}")
+    testImplementation(libs.androidx.room.testing)
 
     implementation("androidx.lifecycle:lifecycle-process:2.7.0")
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
