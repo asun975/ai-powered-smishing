@@ -19,7 +19,7 @@ class MessageDetailActivity : AppCompatActivity() {
     private var messageId: Long = -1
     private var status: String = "caution"
     private var phoneNumber: String = ""
-    private val db = DatabaseHelper(application)
+    private lateinit var db: DatabaseHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,6 +29,9 @@ class MessageDetailActivity : AppCompatActivity() {
             title = "AnalyzedMessage Detail"
             setDisplayHomeAsUpEnabled(true)
         }
+
+        // Get database instance
+        db = DatabaseHelper(application)
 
         // Read extras
         phoneNumber = intent.getStringExtra("phone") ?: "Unknown"

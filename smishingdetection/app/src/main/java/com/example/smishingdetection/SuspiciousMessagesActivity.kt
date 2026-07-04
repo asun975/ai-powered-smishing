@@ -16,12 +16,11 @@ import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.launch
 
 class SuspiciousMessagesActivity : AppCompatActivity() {
-
-    private val db = DatabaseHelper(application)
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: MessageAdapter
     private lateinit var emptyView: TextView
     private lateinit var tabLayout: TabLayout
+    private lateinit var db: DatabaseHelper
 
     private var currentTab = "caution"  // "caution" or "quarantined"
 
@@ -38,6 +37,7 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
         emptyView = findViewById(R.id.tvEmpty)
         tabLayout = findViewById(R.id.tabLayout)
 
+        db = DatabaseHelper(application) // get database instance
         adapter = MessageAdapter(
             mutableListOf(),
             onItemClick = { msg -> openDetail(msg) },
