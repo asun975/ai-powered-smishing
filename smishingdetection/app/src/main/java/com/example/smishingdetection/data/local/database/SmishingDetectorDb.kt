@@ -1,12 +1,13 @@
-package com.example.smishingdetection.data
+package com.example.smishingdetection.data.local.database
 
 import android.content.Context
-import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.smishingdetection.data.local.model.AnalyzedMessage
+import com.example.smishingdetection.data.local.model.BlockedPhoneNumber
 
 @Database(
     entities = [AnalyzedMessage::class, BlockedPhoneNumber::class],

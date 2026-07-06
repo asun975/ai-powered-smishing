@@ -11,7 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.smishingdetection.data.AnalyzedMessage
+import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.launch
 

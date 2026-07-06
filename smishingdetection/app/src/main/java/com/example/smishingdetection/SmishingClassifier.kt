@@ -9,6 +9,16 @@ import java.net.URL
 
 class SmishingClassifier(private val apiUrl: String) {
 
+    private fun getRiskScore(label: String, confidence: Float): Pair<Double, String> {
+        val riskScore = if (label == "SPAM") confidence else (1 - confidence)
+        val riskCategory = when {
+            riskScore > 0.75 -> "HIGH"
+            riskScore >= 0.30 -> "MEDIUM"
+            else -> "LOW"
+        }
+        val riskPercent = (riskScore * 100).toDouble()
+        return Pair(riskPercent, riskCategory)
+    }
     suspend fun classify(text: String): Pair<String, Float> = withContext(Dispatchers.IO) {
         Log.d("SmishingClassifier", "Classifying: $text")
 

@@ -1,10 +1,11 @@
-package com.example.smishingdetection.data
+package com.example.smishingdetection.data.local.database
 
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -13,7 +14,7 @@ interface AnalyzedMessageDao {
     /**
      * Insert a new analyzed message. Returns the new row ID, or -1 on failure.
      */
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.Companion.IGNORE)
     suspend fun insertMessage(message: AnalyzedMessage): Long
 
     /** Delete a message by its row ID. */
@@ -31,10 +32,10 @@ interface AnalyzedMessageDao {
      * newest first.
      */
     @Query("SELECT * FROM analyzed_messages WHERE status = :status ORDER BY date")
-    fun getbyStatus(status: String): Flow<List<AnalyzedMessage>>
+    fun getByStatus(status: String): Flow<List<AnalyzedMessage>>
 
     @Query("SELECT COUNT(*) FROM analyzed_messages WHERE status = :status")
-    fun countByStatus(status: String): Flow<Int>
+    suspend fun countByStatus(status: String): Int
 
     @Query("SELECT * FROM analyzed_messages WHERE id = :id")
     fun getById(id: Long): AnalyzedMessage

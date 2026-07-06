@@ -12,7 +12,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.example.smishingdetection.data.BlockedPhoneNumber
+import com.example.smishingdetection.block.BlockViewModel
 import kotlinx.coroutines.launch
 
 class MessageDetailActivity : AppCompatActivity() {
@@ -20,6 +20,7 @@ class MessageDetailActivity : AppCompatActivity() {
     private var status: String = "caution"
     private var phoneNumber: String = ""
     private lateinit var db: DatabaseHelper
+    private lateinit var blockViewModel: BlockViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -121,7 +122,7 @@ class MessageDetailActivity : AppCompatActivity() {
                         startActivity(telecomManager.createManageBlockedNumbersIntent(), null)
 
                         // Insert new row into app block list
-                        db.blockPhoneNumber(phoneNumber)
+                        db.addToBlockList(phoneNumber)
                     }
                 }
                 .setNegativeButton("Cancel", null)

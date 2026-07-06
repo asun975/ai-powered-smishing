@@ -1,16 +1,8 @@
-package com.example.smishingdetection.data
+package com.example.smishingdetection.data.local.model
 
 import androidx.room.ColumnInfo
-import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Entity
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
-import androidx.room.Query
-import androidx.room.Update
-import com.example.smishingdetection.SuspiciousMessagesActivity
-import kotlinx.coroutines.flow.Flow
 
 /**
  * Local SQLite database that stores detected smishing messages.

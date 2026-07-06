@@ -1,14 +1,15 @@
-package com.example.smishingdetection.data
+package com.example.smishingdetection.data.local.database
 
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import com.example.smishingdetection.data.local.model.BlockedPhoneNumber
 
 @Dao
 interface BlockedPhoneNumberDao{
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.Companion.IGNORE)
     suspend fun insertPhoneNumber(phone: BlockedPhoneNumber)
 
     @Delete

@@ -6,9 +6,7 @@ import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.example.smishingdetection.data.AnalyzedMessage
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.count
+import com.example.smishingdetection.data.local.model.AnalyzedMessage
 
 class MessageAdapter(
     private var messages: List<AnalyzedMessage>,
