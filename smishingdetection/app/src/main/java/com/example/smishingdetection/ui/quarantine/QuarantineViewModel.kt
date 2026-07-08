@@ -1,13 +1,12 @@
-package com.example.smishingdetection.quarantine
+package com.example.smishingdetection.ui.quarantine
 
-import android.app.AlertDialog
-import android.content.Intent
 import android.os.Build
 import android.util.Log
 import android.view.MenuItem
 import android.view.View
 import android.widget.PopupMenu
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -20,41 +19,26 @@ import com.example.smishingdetection.data.local.QuarantineContainer
 import com.example.smishingdetection.data.local.QuarantineRepository
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Date
+import java.util.Locale
 
+/*
+ * TODO: Updates SuspiciousMessagesActivity and MessageViewDetailActivity
+ */
 class QuarantineViewModel(
     private val repository: QuarantineRepository,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     // TODO
-    private suspend fun saveToDatabase(){
-        // Save to database for MEDIUM (caution) and HIGH (quarantined) risk
-        if (riskCategory == "MEDIUM" || riskCategory == "HIGH") {
-            val timestamp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-            } else {
-                java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
-                    .format(java.util.Date())
-            }
-            val newMessage = AnalyzedMessage(
-                id = 0, // database will auto-generate message ID
-                phoneNumber = sender,
-                date = timestamp,
-                message = originalBody,
-                riskScore = riskScorePercent.toDouble(),
-                explanation = explanation,
-                urlScanResult = scanResult ?: ""
-            )
-            val newMessageId = db.insertMessage(newMessage)
-            Log.d("MainActivity", "Saved message to DB: $riskCategory")
-    }
     private fun showSmishingDialog(
         analyzedMessage: AnalyzedMessage
     ) {
         val riskScorePercent = analyzedMessage.riskScore * 100
-        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+        val builder = AlertDialog.Builder(this)
         builder.setTitle("⚠️ Suspicious SMS Detected")
         builder.setMessage(
             "This message may be a phishing attempt.\n\n" +
@@ -93,7 +77,7 @@ class QuarantineViewModel(
     }
 
     private fun confirmDelete() {
-        AlertDialog.Builder(this)
+        android.app.AlertDialog.Builder(this)
             .setTitle("Delete AnalyzedMessage")
             .setMessage("Remove this message from the log?")
             .setPositiveButton("Delete") { _, _ ->
