@@ -1,10 +1,9 @@
-package com.example.smishingdetection.block
+package com.example.smishingdetection.ui.block
 
 import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.Context.CLIPBOARD_SERVICE
-import android.content.Context.TELECOM_SERVICE
+import android.content.Context
 import android.telecom.TelecomManager
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -13,7 +12,7 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.example.smishingdetection.data.local.BlockContainer
+import com.example.smishingdetection.ui.block.BlockContainer
 import com.example.smishingdetection.data.local.DefaultBlockRepository
 import kotlinx.coroutines.launch
 
@@ -38,12 +37,12 @@ class BlockViewModel(
                 .setPositiveButton("Open Block List") { _, _ ->
                     lifecycleScope.launch {
                         // Copy number to clipboard
-                        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText("phone number", phoneNumber)
                         clipboard.setPrimaryClip(clip)
 
                         // Open system block list
-                        val telecomManager = getSystemService(TELECOM_SERVICE) as TelecomManager
+                        val telecomManager = getSystemService(Context.TELECOM_SERVICE) as TelecomManager
                         startActivity(telecomManager.createManageBlockedNumbersIntent(), null)
 
                         // Insert new row into app block list

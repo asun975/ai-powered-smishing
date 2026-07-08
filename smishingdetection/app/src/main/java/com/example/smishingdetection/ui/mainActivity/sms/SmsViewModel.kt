@@ -1,4 +1,4 @@
-package com.example.smishingdetection.ui.mainActivity
+package com.example.smishingdetection.ui.mainActivity.sms
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel

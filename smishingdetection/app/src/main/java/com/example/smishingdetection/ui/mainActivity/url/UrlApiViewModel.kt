@@ -1,4 +1,4 @@
-package com.example.smishingdetection.ui.mainActivity
+package com.example.smishingdetection.ui.mainActivity.url
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -10,7 +10,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.smishingdetection.data.network.url.NetworkUrlApiRepository
-import com.example.smishingdetection.data.network.url.UrlApiContainer
 import com.example.smishingdetection.data.network.url.model.UrlAnalyzerRequest
 import com.example.smishingdetection.data.network.url.model.UrlAnalyzerResponse
 import kotlinx.coroutines.launch

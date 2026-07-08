@@ -1,6 +1,8 @@
-package com.example.smishingdetection.data.network.url
+package com.example.smishingdetection.ui.mainActivity.url
 
 import com.example.smishingdetection.BuildConfig
+import com.example.smishingdetection.data.network.url.NetworkUrlApiRepository
+import com.example.smishingdetection.data.network.url.UrlApiService
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 

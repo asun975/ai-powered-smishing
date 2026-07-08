@@ -1,6 +1,7 @@
-package com.example.smishingdetection.data.local
+package com.example.smishingdetection.ui.quarantine
 
 import android.app.Application
+import com.example.smishingdetection.data.local.QuarantineRepository
 import com.example.smishingdetection.data.local.database.SmishingDetectorDb
 
 class QuarantineContainer: Application() {

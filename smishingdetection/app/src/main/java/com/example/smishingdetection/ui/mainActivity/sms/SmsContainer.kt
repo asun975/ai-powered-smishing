@@ -1,7 +1,9 @@
-package com.example.smishingdetection.data.sms
+package com.example.smishingdetection.ui.mainActivity.sms
 
 import android.app.Application
 import android.content.Context
+import com.example.smishingdetection.data.sms.DefaultSmsProvider
+import com.example.smishingdetection.data.sms.SmsRepository
 import kotlinx.coroutines.Dispatchers
 
 class SmsContainer(

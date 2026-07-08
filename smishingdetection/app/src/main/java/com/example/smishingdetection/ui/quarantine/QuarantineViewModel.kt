@@ -15,7 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.smishingdetection.MessageDetailActivity
-import com.example.smishingdetection.data.local.QuarantineContainer
+import com.example.smishingdetection.ui.quarantine.QuarantineContainer
 import com.example.smishingdetection.data.local.QuarantineRepository
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import kotlinx.coroutines.launch

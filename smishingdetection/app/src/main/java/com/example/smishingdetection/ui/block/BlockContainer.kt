@@ -1,6 +1,7 @@
-package com.example.smishingdetection.data.local
+package com.example.smishingdetection.ui.block
 
 import android.app.Application
+import com.example.smishingdetection.data.local.DefaultBlockRepository
 import com.example.smishingdetection.data.local.database.SmishingDetectorDb
 
 class BlockContainer: Application() {
