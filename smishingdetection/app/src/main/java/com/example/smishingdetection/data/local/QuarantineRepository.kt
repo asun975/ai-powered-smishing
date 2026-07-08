@@ -13,7 +13,9 @@ interface AnalyzedMessageRepository {
         phoneNumber: String,
         date: String,
         message: String,
-        riskScore: Double
+        riskScore: Double,
+        explanation: String,
+        urlScanResult: String
     ): Long
     suspend fun getMessageById(messageId: Long): AnalyzedMessage
     suspend fun quarantineMessage(messageId: Long)
@@ -31,14 +33,18 @@ class QuarantineRepository(
         phoneNumber: String,
         date: String,
         message: String,
-        riskScore: Double
+        riskScore: Double,
+        explanation: String,
+        urlScanResult: String
     ): Long {
         val message = AnalyzedMessage(
             id = 0,
             phoneNumber = phoneNumber,
             date = date,
             message = message,
-            riskScore = riskScore // check activity for risk score implementation
+            riskScore = riskScore,
+            explanation = explanation,
+            urlScanResult = urlScanResult
         )
         val messageId = localDataSource.insertMessage(message)
         return messageId
