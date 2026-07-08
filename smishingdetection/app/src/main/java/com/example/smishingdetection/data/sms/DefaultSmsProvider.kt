@@ -9,7 +9,7 @@ import kotlinx.coroutines.withContext
 interface SmsProvider {
     suspend fun getLatestSms(): SmsMessage?
     suspend fun getRecentSms(count: Int): List<SmsMessage>
-    suspend fun getNewSmsSince(lastTimestamp: Long): List<SmsMessage>
+    suspend fun getNewSmsSince(lastTimestamp: Long?): SmsMessage?
 }
 
 class DefaultSmsProvider(
@@ -82,9 +82,11 @@ class DefaultSmsProvider(
     /*
     * Get a list of sms messages since timestamp of last processed message.
      */
-    override suspend fun getNewSmsSince(lastTimestamp: Long): List<SmsMessage> =
+    override suspend fun getNewSmsSince(lastTimestamp: Long?): SmsMessage? =
         withContext(ioDispatcher) {
-
+            if(lastTimestamp == null) {
+                getLatestSms()
+            }
             val projection = arrayOf(
                 Telephony.Sms._ID,
                 Telephony.Sms.ADDRESS,
@@ -96,8 +98,6 @@ class DefaultSmsProvider(
             val selection = "${Telephony.Sms.DATE} > ?"
             val args = arrayOf(lastTimestamp.toString())
 
-            val result = mutableListOf<SmsMessage>()
-
             context.contentResolver.query(
                 Telephony.Sms.CONTENT_URI,
                 projection,
@@ -105,8 +105,8 @@ class DefaultSmsProvider(
                 args,
                 "${Telephony.Sms.DATE} ASC"
             )?.use { cursor ->
-                while (cursor.moveToNext()) {
-                    result += SmsMessage(
+                if (cursor.moveToFirst()) {
+                    return@use SmsMessage(
                         id = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID)),
                         address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)),
                         body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)),
@@ -114,7 +114,6 @@ class DefaultSmsProvider(
                     )
                 }
             }
-
-            return@withContext result
+            return@withContext null
         }
 }
