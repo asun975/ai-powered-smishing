@@ -181,5 +181,16 @@
             android:layout_marginTop="4dp"
             android:visibility="gone" />
 
+        <!-- Block Message button -->
+        <Button
+            android:id="@+id/blockButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Block Message"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#424242"
+            android:layout_marginTop="8dp"
+            android:visibility="gone" />
+
     </LinearLayout>
 </ScrollView>

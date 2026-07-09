@@ -16,7 +16,7 @@ import android.database.sqlite.SQLiteOpenHelper
  *   message       - original SMS body
  *   risk_score    - 0–100 combined score from the API
  *   prediction    - "SAFE", "SPAM"
- *   status        - "safe" | "caution" | "quarantined"
+ *   status        - "safe" | "caution" | "quarantined" | "blocked"
  *   explanation   - plain-English LLM explanation
  *
  * Status rules:
@@ -208,6 +208,22 @@ class DatabaseHelper(context: Context) :
         val values = ContentValues().apply {
             put(COL_STATUS, "safe")
             put(COL_PREDICTION, "SAFE")
+        }
+        return writableDatabase.update(
+            TABLE_NAME,
+            values,
+            "$COL_MESSAGE = ?",
+            arrayOf(message)
+        )
+    }
+
+    /**
+     * Block a message by its exact message body. Sets status → "blocked".
+     * Returns the number of rows updated (1 on success, 0 if not found).
+     */
+    fun blockMessage(message: String): Int {
+        val values = ContentValues().apply {
+            put(COL_STATUS, "blocked")
         }
         return writableDatabase.update(
             TABLE_NAME,

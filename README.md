@@ -183,7 +183,7 @@ Every analyzed message is stored on the phone in SQLite (`smishing_detector.db`)
 | `message` | TEXT | Original SMS body |
 | `risk_score` | REAL | 0–100 combined score |
 | `prediction` | TEXT | `SPAM` or `SAFE` |
-| `status` | TEXT | `safe` / `caution` / `quarantined` |
+| `status` | TEXT | `safe` / `caution` / `quarantined` / `blocked` |
 | `explanation` | TEXT | Plain-English reason |
 
 **Status rules:**
@@ -208,6 +208,17 @@ Messages flagged as **caution** or **quarantined** show a green **Mark as Safe**
 3. Hides the button
 
 This is also available to teammates via `db.markAsSafe(messageBody)` or `db.updateStatusById(id, "safe")`.
+
+### Block Message
+
+Every result card shows a dark grey **Block Message** button. Tapping it:
+
+1. Updates the message's `status` to `blocked` in the local SQLite database
+2. Flips the prediction badge to grey (`BLOCKED`)
+3. Hides both the Mark as Safe and Block Message buttons
+4. Shows a confirmation toast: **"Message blocked successfully"**
+
+A blocked message stays `blocked` even if the same SMS body arrives again later (cache hits read the persisted `status` column rather than only recomputing it from the risk score). This is also available to teammates via `db.blockMessage(messageBody)` or `db.updateStatusById(id, "blocked")`, and blocked messages can be listed with `db.getByStatus("blocked")`.
 
 ### Permissions Required
 

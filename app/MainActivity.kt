@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var loadingLayout: View
     private lateinit var resultCard: CardView
     private lateinit var markSafeButton: Button
+    private lateinit var blockButton: Button
     private lateinit var db: DatabaseHelper
 
     private var currentMessageBody = ""
@@ -59,6 +60,7 @@ class MainActivity : AppCompatActivity() {
         loadingLayout    = findViewById(R.id.loadingLayout)
         resultCard       = findViewById(R.id.resultCard)
         markSafeButton   = findViewById(R.id.markSafeButton)
+        blockButton      = findViewById(R.id.blockButton)
 
         db = DatabaseHelper(this)
 
@@ -73,6 +75,22 @@ class MainActivity : AppCompatActivity() {
                     .replace("⚠️ Caution", "✅ Safe")
                 markSafeButton.visibility = View.GONE
                 Toast.makeText(this, "Message marked as safe", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        blockButton.setOnClickListener {
+            if (currentMessageBody.isNotEmpty()) {
+                db.blockMessage(currentMessageBody)
+                currentStatus = "blocked"
+                predictionBadge.text = "BLOCKED"
+                predictionBadge.setBackgroundColor(Color.parseColor("#424242"))
+                riskScoreView.text = riskScoreView.text.toString()
+                    .replace("⛔ Quarantined", "🚫 Blocked")
+                    .replace("⚠️ Caution", "🚫 Blocked")
+                    .replace("✅ Safe", "🚫 Blocked")
+                markSafeButton.visibility = View.GONE
+                blockButton.visibility = View.GONE
+                Toast.makeText(this, "Message blocked successfully", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -116,6 +134,7 @@ class MainActivity : AppCompatActivity() {
 
                     resultCard.visibility      = View.GONE
                     markSafeButton.visibility  = View.GONE
+                    blockButton.visibility     = View.GONE
                     loadingLayout.visibility   = View.VISIBLE
 
                     Thread {
@@ -186,7 +205,7 @@ class MainActivity : AppCompatActivity() {
             Log.e(TAG, "DB insert failed: ${e.message}", e)
         }
 
-        renderUI(prediction, riskScore, explanation, fromCache = false)
+        renderUI(prediction, riskScore, explanation, fromCache = false, status = DatabaseHelper.statusFromScore(riskScore))
     }
 
     private fun showCachedResult(cached: Map<String, String>) {
@@ -194,7 +213,8 @@ class MainActivity : AppCompatActivity() {
         val prediction  = cached[DatabaseHelper.COL_PREDICTION] ?: "SAFE"
         val riskScore   = cached[DatabaseHelper.COL_RISK_SCORE]?.toDoubleOrNull() ?: 0.0
         val explanation = cached[DatabaseHelper.COL_EXPLANATION] ?: ""
-        renderUI(prediction, riskScore, explanation, fromCache = true)
+        val status      = cached[DatabaseHelper.COL_STATUS] ?: DatabaseHelper.statusFromScore(riskScore)
+        renderUI(prediction, riskScore, explanation, fromCache = true, status = status)
     }
 
     private fun renderUI(
@@ -202,13 +222,16 @@ class MainActivity : AppCompatActivity() {
         riskScore: Double,
         explanation: String,
         fromCache: Boolean,
+        status: String,
     ) {
-        currentStatus = DatabaseHelper.statusFromScore(riskScore)
+        currentStatus = status
 
         // Badge
-        predictionBadge.text = if (fromCache) "$prediction  (cached)" else prediction
+        val badgeText = if (currentStatus == "blocked") "BLOCKED" else prediction
+        predictionBadge.text = if (fromCache) "$badgeText  (cached)" else badgeText
         predictionBadge.setBackgroundColor(
             when {
+                currentStatus == "blocked" -> Color.parseColor("#424242")
                 prediction == "SPAM" && currentStatus == "quarantined" -> Color.parseColor("#D32F2F")
                 prediction == "SPAM" -> Color.parseColor("#F44336")
                 else -> Color.parseColor("#388E3C")
@@ -219,6 +242,7 @@ class MainActivity : AppCompatActivity() {
         val statusLabel = when (currentStatus) {
             "quarantined" -> "⛔ Quarantined"
             "caution"     -> "⚠️ Caution"
+            "blocked"     -> "🚫 Blocked"
             else          -> "✅ Safe"
         }
         riskScoreView.text = "Risk Score: ${"%.1f".format(riskScore)} / 100   $statusLabel"
@@ -228,6 +252,7 @@ class MainActivity : AppCompatActivity() {
         val progressColor = when (currentStatus) {
             "quarantined" -> Color.parseColor("#D32F2F")
             "caution"     -> Color.parseColor("#FF9800")
+            "blocked"     -> Color.parseColor("#424242")
             else          -> Color.parseColor("#4CAF50")
         }
         riskProgressBar.progressTintList =
@@ -239,9 +264,13 @@ class MainActivity : AppCompatActivity() {
         // Show result card
         resultCard.visibility = View.VISIBLE
 
-        // Mark as Safe button only for non-safe messages
+        // Mark as Safe button only for non-safe, non-blocked messages
         markSafeButton.visibility =
-            if (currentStatus != "safe") View.VISIBLE else View.GONE
+            if (currentStatus != "safe" && currentStatus != "blocked") View.VISIBLE else View.GONE
+
+        // Block button hidden once the message is already blocked
+        blockButton.visibility =
+            if (currentStatus != "blocked") View.VISIBLE else View.GONE
     }
 
     private fun showError() {
@@ -252,5 +281,6 @@ class MainActivity : AppCompatActivity() {
         explanationView.text = ""
         resultCard.visibility = View.VISIBLE
         markSafeButton.visibility = View.GONE
+        blockButton.visibility = View.GONE
     }
 }
