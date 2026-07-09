@@ -15,6 +15,7 @@ import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
@@ -46,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var db: DatabaseHelper
 
     private var currentMessageBody = ""
+    private var currentSender = ""
     private var currentStatus = "safe"
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,17 +82,25 @@ class MainActivity : AppCompatActivity() {
 
         blockButton.setOnClickListener {
             if (currentMessageBody.isNotEmpty()) {
-                db.blockMessage(currentMessageBody)
-                currentStatus = "blocked"
-                predictionBadge.text = "BLOCKED"
-                predictionBadge.setBackgroundColor(Color.parseColor("#424242"))
-                riskScoreView.text = riskScoreView.text.toString()
-                    .replace("⛔ Quarantined", "🚫 Blocked")
-                    .replace("⚠️ Caution", "🚫 Blocked")
-                    .replace("✅ Safe", "🚫 Blocked")
-                markSafeButton.visibility = View.GONE
-                blockButton.visibility = View.GONE
-                Toast.makeText(this, "Message blocked successfully", Toast.LENGTH_SHORT).show()
+                AlertDialog.Builder(this)
+                    .setTitle("Block Sender")
+                    .setMessage("Block all future messages from $currentSender?")
+                    .setPositiveButton("Block") { _, _ ->
+                        db.blockSender(currentSender)
+                        db.blockMessage(currentMessageBody)
+                        currentStatus = "blocked"
+                        predictionBadge.text = "BLOCKED"
+                        predictionBadge.setBackgroundColor(Color.parseColor("#424242"))
+                        riskScoreView.text = riskScoreView.text.toString()
+                            .replace("⛔ Quarantined", "🚫 Blocked")
+                            .replace("⚠️ Caution", "🚫 Blocked")
+                            .replace("✅ Safe", "🚫 Blocked")
+                        markSafeButton.visibility = View.GONE
+                        blockButton.visibility = View.GONE
+                        Toast.makeText(this, "Sender blocked: $currentSender", Toast.LENGTH_LONG).show()
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
             }
         }
 
@@ -129,7 +139,13 @@ class MainActivity : AppCompatActivity() {
                     val sender = sms.displayOriginatingAddress ?: "Unknown"
                     val body   = sms.displayMessageBody ?: continue
 
+                    if (db.isSenderBlocked(sender)) {
+                        Log.d(TAG, "Ignored message from blocked sender: $sender")
+                        continue
+                    }
+
                     currentMessageBody = body
+                    currentSender = sender
                     smsTextView.text = "From: $sender\n\nMessage: $body"
 
                     resultCard.visibility      = View.GONE
@@ -182,6 +198,7 @@ class MainActivity : AppCompatActivity() {
     // ── Display ───────────────────────────────────────────────────────────────
 
     private fun showApiResult(sender: String, body: String, result: JSONObject?) {
+        currentSender = sender
         loadingLayout.visibility = View.GONE
 
         if (result == null) { showError(); return }

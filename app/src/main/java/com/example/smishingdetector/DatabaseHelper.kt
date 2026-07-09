@@ -29,9 +29,10 @@ class DatabaseHelper(context: Context) :
 
     companion object {
         const val DATABASE_NAME = "smishing_detector.db"
-        const val DATABASE_VERSION = 1
+        const val DATABASE_VERSION = 2
 
         const val TABLE_NAME = "analyzed_messages"
+        const val TABLE_BLOCKED_SENDERS = "blocked_senders"
 
         const val COL_ID = "id"
         const val COL_PHONE = "phone_number"
@@ -64,11 +65,29 @@ class DatabaseHelper(context: Context) :
             )
             """.trimIndent()
         )
+        db.execSQL(
+            """
+            CREATE TABLE $TABLE_BLOCKED_SENDERS (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                phone       TEXT    NOT NULL UNIQUE,
+                blocked_at  TEXT    NOT NULL
+            )
+            """.trimIndent()
+        )
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_NAME")
-        onCreate(db)
+        if (oldVersion < 2) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS $TABLE_BLOCKED_SENDERS (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    phone       TEXT    NOT NULL UNIQUE,
+                    blocked_at  TEXT    NOT NULL
+                )
+                """.trimIndent()
+            )
+        }
     }
 
     // ── Write ────────────────────────────────────────────────────────────────
@@ -248,5 +267,38 @@ class DatabaseHelper(context: Context) :
             "$COL_ID = ?",
             arrayOf(id.toString())
         )
+    }
+
+    // ── Sender blocking ───────────────────────────────────────────────────────
+
+    /**
+     * Add a phone number to the blocked senders list.
+     * Uses INSERT OR IGNORE so calling it twice is safe.
+     */
+    fun blockSender(phoneNumber: String) {
+        val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+            .format(java.util.Date())
+        val values = ContentValues().apply {
+            put("phone", phoneNumber)
+            put("blocked_at", timestamp)
+        }
+        writableDatabase.insertWithOnConflict(
+            TABLE_BLOCKED_SENDERS, null, values,
+            SQLiteDatabase.CONFLICT_IGNORE
+        )
+    }
+
+    /**
+     * Returns true if the given phone number is in the blocked senders list.
+     */
+    fun isSenderBlocked(phoneNumber: String): Boolean {
+        val cursor = readableDatabase.query(
+            TABLE_BLOCKED_SENDERS,
+            arrayOf("id"),
+            "phone = ?",
+            arrayOf(phoneNumber),
+            null, null, null, "1"
+        )
+        return cursor.use { it.moveToFirst() }
     }
 }
