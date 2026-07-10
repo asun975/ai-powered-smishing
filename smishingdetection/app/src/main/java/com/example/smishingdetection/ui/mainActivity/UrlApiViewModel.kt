@@ -1,4 +1,4 @@
-package com.example.smishingdetection.ui.mainActivity.url
+package com.example.smishingdetection.ui.mainActivity
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

@@ -1,4 +1,4 @@
-package com.example.smishingdetection.ui.mainActivity.url
+package com.example.smishingdetection.ui.mainActivity
 
 import com.example.smishingdetection.BuildConfig
 import com.example.smishingdetection.data.network.url.NetworkUrlApiRepository
