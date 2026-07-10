@@ -1,9 +1,13 @@
 package com.example.smishingdetection.data.local
 
+import android.os.Build
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import com.example.smishingdetection.data.local.database.AnalyzedMessageDao
+import com.example.smishingdetection.data.network.url.model.UrlAnalyzerResponse
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 /*
  * Interface to the data layer
@@ -15,7 +19,7 @@ interface AnalyzedMessageRepository {
         message: String,
         riskScore: Double,
         explanation: String,
-        urlScanResult: String
+        urlVerdict: UrlAnalyzerResponse?
     ): Long
     suspend fun getMessageById(messageId: Long): AnalyzedMessage
     suspend fun quarantineMessage(messageId: Long)
@@ -35,16 +39,33 @@ class QuarantineRepository(
         message: String,
         riskScore: Double,
         explanation: String,
-        urlScanResult: String
+        urlVerdict: UrlAnalyzerResponse?
     ): Long {
+        // Format date/timestamp
+        val timestamp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+        } else {
+            java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+                .format(java.util.Date())
+        }
+
+        // Format phone number
+        val sender = phoneNumber ?: "Unknown"
+
+        // Format riskScore (double)
+        val riskScorePercent = (riskScore*100)
+
+        // Format url API response TODO: change db to store each value from API response
+        val scanResult = "Scan result returned Malicious:${urlVerdict?.malicious} for ${urlVerdict?.url} submitted with an overall score of ${urlVerdict?.score}"
+
         val message = AnalyzedMessage(
             id = 0,
             phoneNumber = phoneNumber,
-            date = date,
+            date = timestamp,
             message = message,
-            riskScore = riskScore,
+            riskScore = riskScorePercent,
             explanation = explanation,
-            urlScanResult = urlScanResult
+            urlScanResult = scanResult
         )
         val messageId = localDataSource.insertMessage(message)
         return messageId

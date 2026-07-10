@@ -58,7 +58,7 @@ object NotificationHelper {
             .setContentText("From: ${userAlert.phone} — Tap to view details")
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                .bigText("From: ${userAlert.phone}\nRisk: ${userAlert.riskLevel} (${String.format("%.0f", userAlert.riskScorePercent)}%)\n\n${userAlert.explanation}"))
+                .bigText("From: ${userAlert.phone}\nRisk: ${userAlert.riskLevel} (${String.format("%.0f", userAlert.riskScore)}%)\n\n${userAlert.explanation}"))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)

@@ -7,9 +7,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 interface SmsProvider {
-    suspend fun getLatestSms(): SmsMessage?
+    suspend fun getLatestSms(lastProcessedId: Long?): SmsMessage?
     suspend fun getRecentSms(count: Int): List<SmsMessage>
-    suspend fun getNewSmsSince(lastTimestamp: Long?): SmsMessage?
+    suspend fun getNewSmsSince(lastTimestamp: Long): SmsMessage?
 }
 
 class DefaultSmsProvider(
@@ -19,7 +19,7 @@ class DefaultSmsProvider(
     /*
     * Get the most recent sms message
      */
-    override suspend fun getLatestSms(): SmsMessage? =
+    override suspend fun getLatestSms(lastProcessedId: Long?): SmsMessage? =
         withContext(ioDispatcher) {
             val projection = arrayOf(
                 Telephony.Sms._ID,
@@ -34,8 +34,8 @@ class DefaultSmsProvider(
                 null,
                 "${Telephony.Sms.DATE} DESC"
             )?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    return@use SmsMessage(
+                if (cursor.moveToFirst() && cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID)) != lastProcessedId) {
+                    return@withContext SmsMessage(
                         id = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID)),
                         address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)),
                         body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)),
@@ -82,11 +82,8 @@ class DefaultSmsProvider(
     /*
     * Get a list of sms messages since timestamp of last processed message.
      */
-    override suspend fun getNewSmsSince(lastTimestamp: Long?): SmsMessage? =
+    override suspend fun getNewSmsSince(lastTimestamp: Long): SmsMessage? =
         withContext(ioDispatcher) {
-            if(lastTimestamp == null) {
-                getLatestSms()
-            }
             val projection = arrayOf(
                 Telephony.Sms._ID,
                 Telephony.Sms.ADDRESS,

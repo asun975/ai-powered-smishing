@@ -12,7 +12,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.example.smishingdetection.block.BlockViewModel
+import com.example.smishingdetection.ui.block.BlockViewModel
 import kotlinx.coroutines.launch
 
 class MessageDetailActivity : AppCompatActivity() {

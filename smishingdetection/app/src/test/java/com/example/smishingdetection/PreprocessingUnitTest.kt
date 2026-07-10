@@ -1,6 +1,4 @@
 package com.example.smishingdetection
-import com.example.smishingdetection.Preprocessing.Companion.preprocessLlmText
-import com.example.smishingdetection.Preprocessing.Companion.preprocessClassifierText
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith

@@ -14,8 +14,9 @@ class NetworkExplainerApiRepository(
     private val explainerApiSanitizer: ExplainerApiSanitizer
 ) : ExplainerApiRepository {
     override suspend fun explain(input: String, classification: String, riskScore: Float): ExplainerResponse {
+        val santizedInput = explainerApiSanitizer.sanitize(input)
         val request = ExplainerRequest(
-            explainerApiSanitizer.sanitize(input),
+            santizedInput,
             classification,
             riskScore
         )

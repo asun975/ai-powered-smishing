@@ -28,7 +28,8 @@ class SmsProcessingCoordinator(
         return Pair(riskScore, riskLevel)
     }
 
-    suspend fun processMessage(message: SmsMessage) {
+    fun processMessage(message: SmsMessage) {
+
         val messageBody = message.body
 
         if (messageBody.isNotEmpty()) {
