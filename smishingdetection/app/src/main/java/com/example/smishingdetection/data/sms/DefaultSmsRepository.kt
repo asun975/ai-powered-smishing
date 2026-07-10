@@ -1,18 +1,17 @@
 package com.example.smishingdetection.data.sms
 
-import android.content.Intent
-import androidx.appcompat.app.AlertDialog
-import com.example.smishingdetection.AppLifecycleTracker
-import com.example.smishingdetection.MessageDetailActivity
 import com.example.smishingdetection.data.local.QuarantineRepository
 import com.example.smishingdetection.data.network.classifier.NetworkClassifierApiRepository
+import com.example.smishingdetection.data.network.classifier.model.ClassifierApiResult
 import com.example.smishingdetection.data.network.classifier.model.ClassifierResponse
 import com.example.smishingdetection.data.network.explainer.NetworkExplainerApiRepository
+import com.example.smishingdetection.data.network.explainer.model.ExplainerApiResult
 import com.example.smishingdetection.data.network.explainer.model.ExplainerRequest
-import com.example.smishingdetection.data.network.explainer.model.ExplainerResponse
 import com.example.smishingdetection.data.network.url.NetworkUrlApiRepository
 import com.example.smishingdetection.data.network.url.model.UrlAnalyzerResponse
-import com.example.smishingdetection.data.smishingalert.SmishingAlert
+import com.example.smishingdetection.data.network.url.model.UrlApiResult
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 interface SmsRepository {
     /*
@@ -25,9 +24,9 @@ interface SmsRepository {
      */
 
     suspend fun checkLatestSms(lastProcessedId: Long?): SmsMessage?
-    suspend fun classifyMessage(message: SmsMessage): ClassifierResponse
-    suspend fun explainMessage(request: ExplainerRequest): ExplainerResponse
-    suspend fun getUrlVerdict(message: String): UrlAnalyzerResponse?
+    suspend fun classifyMessage(message: SmsMessage): ClassifierApiResult
+    suspend fun explainMessage(request: ExplainerRequest): ExplainerApiResult
+    suspend fun getUrlVerdict(message: String): UrlApiResult?
     suspend fun insertIntoDatabase(
         sender: String,
         date: String,
@@ -50,27 +49,37 @@ class DefaultSmsRepository(
         return smsProvider.getLatestSms(lastProcessedId)
     }
 
-    override suspend fun classifyMessage(message: SmsMessage): ClassifierResponse {
+    override suspend fun classifyMessage(message: SmsMessage): ClassifierApiResult {
         val messageBody = message.body
-        // Call smishing classifier API
-        val classifier = classifierApiRepository.classify(messageBody)
-        val confidence = classifier.confidence
-        val label = classifier.label
-        // Calculate risk score and risk level - low, medium, high
-        val riskScore = if (label == "SPAM") confidence else (1 - confidence)
-        val riskLevel = when {
-            riskScore > 0.75 -> "HIGH"
-            riskScore >= 0.30 -> "MEDIUM"
-            else -> "LOW"
-        }
-            return ClassifierResponse(
-                label,
-                riskScore,
-                riskLevel
-            )
-        }
 
-    override suspend fun explainMessage(request: ExplainerRequest): ExplainerResponse {
+        // Handle successful and failed requests to classifier API
+        when (val result = classifierApiRepository.classify(messageBody)) {
+            is ClassifierApiResult.Success -> {
+                val confidence = result.data.confidence
+                val label = result.data.label
+
+                // Calculate risk score and risk level - low, medium, high
+                val riskScore = if (label == "SPAM") confidence else (1 - confidence)
+                val riskLevel = when {
+                    riskScore > 0.75 -> "HIGH"
+                    riskScore >= 0.30 -> "MEDIUM"
+                    else -> "LOW"
+                }
+                return ClassifierApiResult.Success(
+                    ClassifierResponse(
+                        label,
+                        riskScore,
+                        riskLevel
+                    )
+                )
+            }
+            else -> {
+                return result   // pass along error response
+            }
+        }
+    }
+
+    override suspend fun explainMessage(request: ExplainerRequest): ExplainerApiResult {
         return explainerApiRepository.explain(
             request.input,
             "SPAM",
@@ -78,7 +87,7 @@ class DefaultSmsRepository(
         )
     }
 
-    override suspend fun getUrlVerdict(message: String): UrlAnalyzerResponse? {
+    override suspend fun getUrlVerdict(message: String): UrlApiResult? {
         return urlApiRepository.getVerdict(message)
     }
 
