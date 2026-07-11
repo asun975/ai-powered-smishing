@@ -1,8 +1,10 @@
 package com.example.smishingdetection.data.sanitizer
 
 class ExplainerApiSanitizer : ApiInputSanitizer {
-    override fun sanitize(input: String): String {
-
+    override fun sanitize(input: String?): String {
+        if(input.isNullOrEmpty()) {
+            throw InvalidInputException("Input cannot be null or empty")
+        }
         require(input.trim().isNotEmpty()) {
             throw InvalidInputException("Input cannot be empty")
         }

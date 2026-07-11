@@ -10,22 +10,24 @@ import retrofit2.HttpException
 
 // TODO add error data models for API responses
 interface ExplainerApiRepository {
-    suspend fun explain(input: String, classification: String, riskScore: Float) : ExplainerApiResult
+    suspend fun explain(request: ExplainerRequest) : ExplainerApiResult
 }
 
 class NetworkExplainerApiRepository(
     private val explainerApiService: ExplainerApiService,
     private val explainerApiSanitizer: ExplainerApiSanitizer
 ) : ExplainerApiRepository {
-    override suspend fun explain(input: String, classification: String, riskScore: Float): ExplainerApiResult {
+    override suspend fun explain(request: ExplainerRequest): ExplainerApiResult {
         try {
-            val santizedInput = explainerApiSanitizer.sanitize(input)
-            val request = ExplainerRequest(
+            val santizedInput = explainerApiSanitizer.sanitize(request.input)
+            val response = explainerApiService.explain(
+                ExplainerRequest(
                 santizedInput,
-                classification,
-                riskScore
+                request.classification,
+                request.riskScore
+                )
             )
-            return ExplainerApiResult.Success(explainerApiService.explain(request))
+            return ExplainerApiResult.Success(response)
 
         } catch (e: HttpException) {
             val statusCode = e.code()

@@ -2,14 +2,14 @@ package com.example.smishingdetection.ui.mainActivity
 
 import android.content.Intent
 import android.os.Build
+import android.provider.Contacts
 import android.util.Log
 import androidx.appcompat.app.AlertDialog
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.room.util.copy
 import com.example.smishingdetection.AppLifecycleTracker
 import com.example.smishingdetection.MessageDetailActivity
+import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import com.example.smishingdetection.data.network.classifier.model.ClassifierApiResult
 import com.example.smishingdetection.data.network.classifier.model.ClassifierResponse
 import com.example.smishingdetection.data.network.explainer.model.ExplainerApiResult
@@ -65,7 +65,7 @@ sealed interface ScanUiState {
  */
 class SmsViewModel (
     private val smsRepository: SmsRepository,
-    private val savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateViewModel
 ): ViewModel() {
     // UI state for sms provider
     private val _smsUiState =
@@ -87,40 +87,25 @@ class SmsViewModel (
         MutableStateFlow<ScanUiState>(ScanUiState.Idle)
     val scanUiState: StateFlow<ScanUiState> = _scanUiState
 
-    // Saved states
-    private val _lastProcessedId: MutableStateFlow<Long?> = MutableStateFlow(null)
-    val lastProcessedId: StateFlow<Long?> = _lastProcessedId
-
-    private val _processingMessage: MutableStateFlow<String?> = MutableStateFlow(null)
-    val processingMessage: StateFlow<String?> = _processingMessage
-
-    private val _classifierResponse: MutableStateFlow<ClassifierResponse?> = MutableStateFlow(null)
-    val classifierResponse: StateFlow<ClassifierResponse?> = _classifierResponse
-
-    private val _explainer: MutableStateFlow<ExplainerResponse?> = MutableStateFlow(null)
-    val explainer: StateFlow<ExplainerResponse?> = _explainer
-
-    private val _urlVerdict: MutableStateFlow<UrlAnalyzerResponse?> = MutableStateFlow(null)
-    val urlVerdict: StateFlow<UrlAnalyzerResponse?> = _urlVerdict
-
-    fun checkLatestSms() {
+    private fun checkLatestSms() {
         viewModelScope.launch {
             _smsUiState.value = SmsUiState.Loading
-            when(val newMessage = smsRepository.checkLatestSms(lastProcessedId.value)) {
+            when(val newMessage = smsRepository.checkLatestSms(savedStateHandle.lastProcessedSmsId as Long)) {
                 null -> {
                     // No new messages
                     _smsUiState.value = SmsUiState.Idle
                 }
                 is SmsMessage -> {
-                    _lastProcessedId.value = newMessage.id
-                    _processingMessage.value = newMessage.body
+                    savedStateHandle.setLastProcessedId(newMessage.id)
+                    savedStateHandle.setSmsBody(newMessage.body)
+                    savedStateHandle.setSmsAddress(newMessage.address)
                     _smsUiState.value = SmsUiState.Success( newMessage)
                 }
             }
         }
     }
 
-    fun detectSmishing(message: SmsMessage) {
+    private fun classify(message: String) {
         viewModelScope.launch {
             _classifierUiState.value = ClassifierUiState.Loading
             val result = smsRepository.classifyMessage(message)
@@ -128,7 +113,8 @@ class SmsViewModel (
             when(result) {
                 is ClassifierApiResult.Success -> {
                     _classifierUiState.value = ClassifierUiState.Success(result.data)
-                    _classifierResponse.value = result.data
+                    savedStateHandle.setLabel(result.data.label)
+                    savedStateHandle.setRiskScore(result.data.confidence)
                 }
                 is ClassifierApiResult.ApiError -> {
                     _classifierUiState.value = ClassifierUiState.ApiError(result)
@@ -142,14 +128,14 @@ class SmsViewModel (
         }
     }
 
-    fun getExplanation(request: ExplainerRequest) {
+    private fun getExplanation(text: String, classification: String, riskScore: Float) {
         viewModelScope.launch {
             _explainerUiState.value = ExplainerUiState.Loading
-            val response = smsRepository.explainMessage(request)
+            val response = smsRepository.explainMessage(ExplainerRequest(text, classification, riskScore))
             when(response) {
                 is ExplainerApiResult.Success -> {
                     _explainerUiState.value = ExplainerUiState.Success(response.data)
-                    _explainer.value = response.data
+                    savedStateHandle.setExplanation(response.data.explanation)
                 }
                 is ExplainerApiResult.ApiError -> {
                     _explainerUiState.value = ExplainerUiState.ApiError(response)
@@ -157,20 +143,20 @@ class SmsViewModel (
                 }
                 is ExplainerApiResult.ExceptionError -> {
                     _explainerUiState.value = ExplainerUiState.Exception(response)
-                    Log.d("Explainer", "API error: ${response.exeception}, ${response.message}")
+                    Log.d("Explainer", "Exception: ${response.exeception}, ${response.message}")
                 }
             }
         }
     }
 
-    fun scan(url: String) {
+    private fun scan(url: String) {
         viewModelScope.launch {
             _scanUiState.value = ScanUiState.Loading
             val response = smsRepository.getUrlVerdict(url)
             when(response) {
                 is UrlApiResult.Success -> {
                     _scanUiState.value = ScanUiState.Success(response.data)
-                    _urlVerdict.value = response.data
+                    savedStateHandle.setScanResult(response.data)
                 }
                 is UrlApiResult.ApiError -> {
                     _scanUiState.value = ScanUiState.ApiError(response)
@@ -178,7 +164,7 @@ class SmsViewModel (
                 }
                 is UrlApiResult.ValidationError -> {
                     _scanUiState.value = ScanUiState.Idle
-                    Log.d("UrlAnalyzer", "${response.error}")
+                    Log.d("UrlAnalyzer", "$response.error")
                 }
                 is UrlApiResult.ExceptionError -> {
                     _scanUiState.value = ScanUiState.Exception(response)
@@ -192,130 +178,57 @@ class SmsViewModel (
         }
     }
 
+    fun refresh() {
+        // ui states
+        _smsUiState.value = SmsUiState.Idle
+        _classifierUiState.value = ClassifierUiState.Idle
+        _explainerUiState.value = ExplainerUiState.Idle
+        _scanUiState.value = ScanUiState.Idle
+
+        savedStateHandle.resetSavedState()
+    }
     // TODO
-    fun processMessage(timestamp: Long?): SmishingAlert? {
-        viewModelScope.launch {
-            val message = if (timestamp == null) {
-                smsRepository.loadOnOpen()
-            } else smsRepository.loadMessage()
-
-            if (message != null) {
-                val smishingAlert = detectSmishing(message)
-                return smishingAlert
-            }
-            if(AppLifecycleTracker.isAppInForeground) {
-                showSmishingDialog(smishingAlert)
-            } else {
-                NotificationHelper.sendSmishingNotification(smishingAlert)
-            }
-        }
-    }
-
-    fun showSmishingDialog(
-        alert: SmishingAlert
-    ) {
-        val riskScorePercent = alert.riskScore
-        val builder = AlertDialog.Builder(kotlin.context)
-        builder.setTitle("⚠️ Suspicious SMS Detected")
-        builder.setMessage(
-            "This message may be a phishing attempt.\n\n" +
-                    "From: ${alert.phone}\n" +
-                    "Risk: ${alert.riskLevel} (${String.format("%.0f", riskScorePercent)}%)\n\n" +
-                    "Reason: ${alert.explanation}"
-        )
-        builder.setPositiveButton("View Details") { _, _ ->
-            val intent = Intent(this, MessageDetailActivity::class.java)
-            startActivity(intent)
-        }
-        builder.setNegativeButton("Dismiss", null)
-        builder.show()
-    }
-
     fun processMessage() {
-
-    }
-    fun detect(message: SmsMessage): SmishingAlert? {
-        val messageBody = message.body
-
-        if (messageBody.isNotEmpty()) {
-            // Call smishing classifier API
-            val classifier = classifierApiRepository.classify(messageBody)
-
-            // Calculate risk score and risk level - low, medium, high
-            val (riskScore, riskLevel) = getRiskScore(
-                classifier.label,
-                classifier.confidence)
-
-            // Call url sandbox
-            val urlResponse = urlApiRepository.getVerdict(messageBody)
-
-            // Call LLM for risk level medium and high
-            if(riskLevel == "HIGH" || riskLevel == "MEDIUM"){
-                val explainer = explainerApiRepository.explain(
-                    messageBody,
-                    "SPAM",
-                    riskScore
-                )
-                // Format date/timestamp
-                val timestamp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-                } else {
-                    SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                        .format(Date())
-                }
-                // Format url API response TODO: change db to store each value from API response
-                val scanResult =
-                    "Scan result returned Malicious:${urlResponse?.malicious} for ${urlResponse?.url} submitted with an overall score of ${urlResponse?.score}"
-                // Format phone number
-                val sender = message.address ?: "Unknown"
-
-                // Format riskScore (double)
-                val riskScorePercent = (riskScore*100)
-
-                // Insert analyzed message into quarantine database
-                quarantineRepository.insertMessage(
-                    sender,
-                    timestamp,
-                    messageBody,
-                    riskScorePercent.toDouble(),
-                    explainer.explanation,
-                    scanResult
-                )
-
-                // Return notification data
-                return SmishingAlert(
-                    message.id,
-                    sender,
-                    timestamp,
-                    messageBody,
-                    riskScorePercent.toDouble(),
-                    riskLevel,
-                    explainer.explanation,
-                    scanResult
-                )
-            }
-        }
-        return null
-    }
-
-    fun processMessage(timestamp: Long?): SmishingAlert? {
         viewModelScope.launch {
-            val message = if (timestamp == null) {
-                smsRepository.loadOnOpen()
-            } else smsRepository.loadMessage()
+            checkLatestSms() // get latest sms using database observer
+            val message = savedStateHandle.smsBody.value
+            if(message != null) {
+                // Use classifier API model and send urls to sandbox
+                classify(savedStateHandle.smsBody.value)
+                scan(savedStateHandle.smsBody.value)
 
-            if (message != null) {
-                val smishingAlert = detectSmishing(message)
-                return smishingAlert
+                // Generate explanation for high and medium risk messages
+                if (savedStateHandle.riskLevel.value == "MEDIUM" || savedStateHandle.riskLevel.value == "HIGH") {
+                    val riskScore = savedStateHandle.riskScore.value as Float
+                    getExplanation(
+                        savedStateHandle.smsBody.value,
+                        savedStateHandle.label.value,
+                        riskScore
+                    )
+                    // Save to local database
+                    val rowId = smsRepository.insertIntoDatabase(
+                        savedStateHandle.smsAddress.value,
+                        savedStateHandle.smsDate.value,
+                        savedStateHandle.smsBody.value,
+                        riskScore,
+                        savedStateHandle.explanation.value,
+                        savedStateHandle.scanResult.value
+                    )
+
+                    /** TODO: Send user alert
+                    val alert = smsRepository.getMessageById(rowId)
+
+                    if(AppLifecycleTracker.isAppInForeground) {
+                        showSmishingDialog(alert)
+                    } else {
+                        NotificationHelper.sendSmishingNotification(smishingAlert)
+                    }
+                    */
+                }
             }
-            if(AppLifecycleTracker.isAppInForeground) {
-                showSmishingDialog(smishingAlert)
-            } else {
-                NotificationHelper.sendSmishingNotification(smishingAlert)
-            }
+            refresh()
         }
     }
-
     fun showSmishingDialog(
         alert: SmishingAlert
     ) {

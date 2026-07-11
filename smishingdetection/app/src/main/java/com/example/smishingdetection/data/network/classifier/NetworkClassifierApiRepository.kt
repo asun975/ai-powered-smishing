@@ -11,19 +11,17 @@ import retrofit2.HttpException
 
 // TODO add error data models for API responses
 interface ClassifierApiRepository {
-    suspend fun classify(message:String) : ClassifierApiResult
+    suspend fun classify(message:String?) : ClassifierApiResult
 }
 
 class NetworkClassifierApiRepository(
     private val classifierApiService: ClassifierApiService,
     private val classifierApiSanitizer: ClassifierApiSanitizer
 ) : ClassifierApiRepository {
-    override suspend fun classify(message: String): ClassifierApiResult {
+    override suspend fun classify(message: String?): ClassifierApiResult {
         try {
-            val request = ClassifierRequest(
-                classifierApiSanitizer.sanitize(message)
-            )
-            val response = classifierApiService.classify(request)
+            val sanitizedInput = classifierApiSanitizer.sanitize(message)
+            val request = ClassifierRequest(sanitizedInput)
 
             return ClassifierApiResult.Success(classifierApiService.classify(request))
 

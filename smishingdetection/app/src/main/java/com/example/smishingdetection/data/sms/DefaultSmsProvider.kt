@@ -39,7 +39,7 @@ class DefaultSmsProvider(
                 if (cursor.moveToFirst() && cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID)) != lastProcessedId) {
                     return@withContext SmsMessage(
                         id = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID)),
-                        address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)),
+                        address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)) ?: "Unknown",
                         body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)),
                         date = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE))
                     )

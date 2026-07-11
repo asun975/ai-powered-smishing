@@ -24,23 +24,10 @@
         android:layout_marginTop="40dp"/>
 
     <TextView
-        android:id="@+id/smsSenderTextView"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text=""
-        android:textSize="16sp"
-        android:padding="16dp"
-        android:gravity="start"
-        app:layout_constraintTop_toBottomOf="@id/resultTextView"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="20dp"/>
-
-    <TextView
         android:id="@+id/smsTextView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="92dp"
+        android:layout_marginTop="48dp"
         android:gravity="start"
         android:padding="16dp"
         android:text=""

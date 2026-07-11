@@ -14,8 +14,16 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.activity.viewModels
+import androidx.lifecycle.Lifecycle
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.example.smishingdetection.ui.mainActivity.ClassifierUiState
+import com.example.smishingdetection.ui.mainActivity.ExplainerUiState
+import com.example.smishingdetection.ui.mainActivity.ScanUiState
+import com.example.smishingdetection.ui.mainActivity.SmsUiState
+import com.example.smishingdetection.ui.mainActivity.SmsViewModel
+import kotlinx.coroutines.launch
 
 /*
  * TODO
@@ -30,8 +38,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var explanationTextView: TextView
     private val CHANNEL_ID = "smishing_alerts"
     private val CHANNEL_NAME = "Smishing Alerts"
-    private val smsViewModel : ViewModel by viewModels()
-    private lateinit var binding: ActivityMainBinding
+    private val smsViewModel : SmsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,7 +60,34 @@ class MainActivity : AppCompatActivity() {
 
         requestPermissions()
         createNotificationChannel(applicationContext, CHANNEL_ID, CHANNEL_NAME)
+        smsViewModel.processMessage()
+        lifecycleScope.launch {
+            repeatOnLifecycle((Lifecycle.State.STARTED)) {
+                launch {
+                    smsViewModel.smsUiState.collect { uiState ->
+                        renderSmsView(uiState)
+                    }
+                }
+                launch {
+                     smsViewModel.classifierUiState
+                        .collect { uiState ->
+                            renderClassifierView(uiState)
+                        }
+                }
+                launch {
+                    smsViewModel.explainerUiState.collect { uiState ->
+                        renderExplainerView((uiState))
+                    }
+                }
+                launch {
+                    smsViewModel.scanUiState.collect { uiState ->
+                        renderUrlView(uiState)
+                    }
+                }
+            }
+        }
     }
+
 
     override fun onResume() {
         super.onResume()
@@ -106,6 +140,111 @@ class MainActivity : AppCompatActivity() {
             }
             val manager = context.getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun renderSmsView(state: SmsUiState) {
+        when(state) {
+            is SmsUiState.Success -> {
+                 smsTextView.text = "From: ${state.smsMessage.address}\n\nMessage: ${state.smsMessage.body}"
+            }
+            is SmsUiState.Error -> {
+                smsTextView.text = "Error: Smishing Detector could not read SMS message. Skipping!"
+            }
+            is SmsUiState.Idle -> {
+                smsTextView.text = ""
+            }
+            is SmsUiState.Loading -> {
+                smsTextView.text = "Processing new messages..."
+            }
+        }
+    }
+
+    private fun renderClassifierView(state: ClassifierUiState) {
+        when(state) {
+            is ClassifierUiState.Success -> {
+                val riskScorePercent = state.result.confidence
+                when(state.result.riskLevel) {
+                    "HIGH" -> {
+                        resultTextView.text = "⚠️ Detected High Risk of Smishing!\n\n${
+                            String.format("%2.2f", riskScorePercent)}% Risk Score"
+                        resultTextView.setTextColor(getColor(android.R.color.holo_red_light))
+                        explanationTextView.text = "💬 Getting explanation..."
+                        explanationTextView.setTextColor(getColor(android.R.color.darker_gray))
+                    }
+                    "MEDIUM" -> {
+                        resultTextView.text = "⚠️ Signs of Smishing Detected\n\n${
+                            String.format("%2.2f", riskScorePercent)}% Risk Score"
+                        resultTextView.setTextColor(getColor(android.R.color.holo_orange_dark))
+                        explanationTextView.text = "💬 Getting explanation..."
+                        explanationTextView.setTextColor(getColor(android.R.color.darker_gray))
+                    }
+                    "LOW" -> {
+                        resultTextView.text = "✅ Low Risk of Smishing\n\n${
+                            String.format("%2.2f", riskScorePercent)}% Risk Score"
+                        resultTextView.setTextColor(getColor(android.R.color.holo_green_dark))
+                        explanationTextView.text = ""
+                    }
+                }
+            }
+            is ClassifierUiState.Idle -> {
+                resultTextView.text = "Waiting for SMS messages"
+            }
+            is ClassifierUiState.Loading -> {
+                resultTextView.text = "🔍 Analyzing..."
+            }
+            is ClassifierUiState.ApiError -> {
+                resultTextView.text = state.message.message
+            }
+            is ClassifierUiState.Exception -> {
+                resultTextView.text = state.error.message
+            }
+        }
+    }
+
+    private fun renderExplainerView(state: ExplainerUiState) {
+        when(state) {
+            is ExplainerUiState.Success -> {
+                explanationTextView.text = "💬 ${state.explanation.explanation}"
+                explanationTextView.setTextColor(getColor(android.R.color.holo_red_light))
+            }
+            is ExplainerUiState.Idle -> {
+                explanationTextView.text = ""
+            }
+            is ExplainerUiState.Loading -> {
+                explanationTextView.text = ""
+            }
+            is ExplainerUiState.ApiError -> {
+                explanationTextView.text = state.error.message
+            }
+            is ExplainerUiState.Exception -> {
+                explanationTextView.text = state.error.message
+            }
+        }
+    }
+
+    private fun renderUrlView(state: ScanUiState) {
+        when (state) {
+            is ScanUiState.Success -> {
+                val resultString = "🔗 URLSCAN.IO Sandbox \nURL: ${state.scanResult.url}\nOverall Score: ${state.scanResult.score}\n Overall Verdict: ${state.scanResult.malicious}"
+                urlAnalyzerTextView.text = resultString
+            }
+
+            is ScanUiState.Idle -> {
+                urlAnalyzerTextView.text = ""
+            }
+
+            is ScanUiState.Loading -> {
+                urlAnalyzerTextView.text = "Loading scan results..."
+            }
+
+            is ScanUiState.ApiError -> {
+                urlAnalyzerTextView.text = state.error.message
+            }
+
+            is ScanUiState.Exception -> {
+                urlAnalyzerTextView.text = state.exception.message
+            }
         }
     }
 }

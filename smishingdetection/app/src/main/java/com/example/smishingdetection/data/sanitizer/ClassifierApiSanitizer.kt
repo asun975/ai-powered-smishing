@@ -8,7 +8,10 @@ class ClassifierApiSanitizer : ApiInputSanitizer {
     * Removes PII
     * text preprocessing remove emoji unicode characters, punctuation and extra whitespace.
      */
-    override fun sanitize(input: String): String {
+    override fun sanitize(input: String?): String {
+        if(input.isNullOrEmpty()) {
+            throw InvalidInputException("Input cannot be null or empty")
+        }
         var sanitized = input.trim()
 
         require(input.trim().isNotEmpty()) {

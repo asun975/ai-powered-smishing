@@ -5,7 +5,7 @@ data class SmishingAlert(
     val phone: String,
     val date: String,
     val message: String,
-    val riskScore: Double,
+    val riskScore: Float,
     val riskLevel: String,
     val explanation: String,
     val urlScanResult: String

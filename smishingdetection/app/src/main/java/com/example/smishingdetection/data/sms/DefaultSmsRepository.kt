@@ -1,6 +1,7 @@
 package com.example.smishingdetection.data.sms
 
 import com.example.smishingdetection.data.local.QuarantineRepository
+import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import com.example.smishingdetection.data.network.classifier.NetworkClassifierApiRepository
 import com.example.smishingdetection.data.network.classifier.model.ClassifierApiResult
 import com.example.smishingdetection.data.network.classifier.model.ClassifierResponse
@@ -10,6 +11,7 @@ import com.example.smishingdetection.data.network.explainer.model.ExplainerReque
 import com.example.smishingdetection.data.network.url.NetworkUrlApiRepository
 import com.example.smishingdetection.data.network.url.model.UrlAnalyzerResponse
 import com.example.smishingdetection.data.network.url.model.UrlApiResult
+import com.example.smishingdetection.data.sanitizer.ClassifierApiSanitizer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.descriptors.StructureKind
@@ -25,17 +27,18 @@ interface SmsRepository {
      */
 
     suspend fun checkLatestSms(lastProcessedId: Long?): SmsMessage?
-    suspend fun classifyMessage(message: SmsMessage): ClassifierApiResult
-    suspend fun explainMessage(request: ExplainerRequest): ExplainerApiResult
+    suspend fun classifyMessage(message: String): ClassifierApiResult
+    suspend fun explainMessage(input: ExplainerRequest): ExplainerApiResult
     suspend fun getUrlVerdict(message: String): UrlApiResult?
     suspend fun insertIntoDatabase(
         sender: String,
         date: String,
         message: String,
-        riskScore: Double, // TODO: change to float, stay consistent with API
+        riskScore: Float, // TODO: change to float, stay consistent with API
         explanation: String,
         urlVerdict: UrlAnalyzerResponse?
     ): Long
+    suspend fun getMessageById(id: Long): AnalyzedMessage
 }
 
 class DefaultSmsRepository(
@@ -50,11 +53,10 @@ class DefaultSmsRepository(
         return smsProvider.getLatestSms(lastProcessedId)
     }
 
-    override suspend fun classifyMessage(message: SmsMessage): ClassifierApiResult {
-        val messageBody = message.body
-
+    override suspend fun classifyMessage(message: String): ClassifierApiResult {
+        val input: String? = message
         // Handle successful and failed requests to classifier API
-        when (val result = classifierApiRepository.classify(messageBody)) {
+        when (val result = classifierApiRepository.classify(input)) {
             is ClassifierApiResult.Success -> {
                 val confidence = result.data.confidence
                 val label = result.data.label
@@ -84,11 +86,7 @@ class DefaultSmsRepository(
     }
 
     override suspend fun explainMessage(request: ExplainerRequest): ExplainerApiResult {
-        return explainerApiRepository.explain(
-            request.input,
-            "SPAM",
-            request.riskScore,
-        )
+        return explainerApiRepository.explain(request)
     }
 
     override suspend fun getUrlVerdict(message: String): UrlApiResult? {
@@ -99,7 +97,7 @@ class DefaultSmsRepository(
         sender: String,
         date: String,
         message: String,
-        riskScore: Double,
+        riskScore: Float,
         explanation: String,
         urlVerdict: UrlAnalyzerResponse?
     ): Long {
@@ -107,10 +105,14 @@ class DefaultSmsRepository(
             sender,
             date,
             message,
-            riskScore,
+            riskScore.toDouble(),
             explanation,
             urlVerdict
         )
         return rowId
+    }
+
+    override suspend fun getMessageById(id: Long): AnalyzedMessage {
+        return quarantineRepository.getMessageById(id)
     }
 }
