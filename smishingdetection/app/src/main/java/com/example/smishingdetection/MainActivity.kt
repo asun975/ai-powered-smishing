@@ -14,10 +14,14 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.Lifecycle
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.example.smishingdetection.data.local.model.AnalyzedMessage
+import com.example.smishingdetection.data.smishingalert.NotificationHelper
+import com.example.smishingdetection.data.smishingalert.SmishingAlert
 import com.example.smishingdetection.ui.mainActivity.ClassifierUiState
 import com.example.smishingdetection.ui.mainActivity.ExplainerUiState
 import com.example.smishingdetection.ui.mainActivity.ScanUiState
@@ -36,13 +40,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var smsTextView: TextView
     private lateinit var resultTextView: TextView
     private lateinit var explanationTextView: TextView
-    private val CHANNEL_ID = "smishing_alerts"
-    private val CHANNEL_NAME = "Smishing Alerts"
     private val smsViewModel : SmsViewModel by viewModels()
+    private lateinit var notificationHelper: NotificationHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        notificationHelper = NotificationHelper
 
         Log.d("MainActivity", "========== APP STARTED ===========")
 
@@ -59,9 +63,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         requestPermissions()
-        createNotificationChannel(applicationContext, CHANNEL_ID, CHANNEL_NAME)
-        smsViewModel.processMessage()
+        notificationHelper.createNotificationChannel(applicationContext)
+
         lifecycleScope.launch {
+            smsViewModel.processMessage()
             repeatOnLifecycle((Lifecycle.State.STARTED)) {
                 launch {
                     smsViewModel.smsUiState.collect { uiState ->
@@ -82,6 +87,16 @@ class MainActivity : AppCompatActivity() {
                 launch {
                     smsViewModel.scanUiState.collect { uiState ->
                         renderUrlView(uiState)
+                    }
+                }
+                launch {
+                    smsViewModel.showAlertEvent.collect { alert ->
+                        showSmishingDialog(alert)
+                    }
+                }
+                launch {
+                    smsViewModel.sendUserAlert.collect { alert ->
+                        notificationHelper.sendSmishingNotification(applicationContext, alert)
                     }
                 }
             }
@@ -129,18 +144,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun createNotificationChannel(context: Context, channelId: String, channelName: String) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                channelName,
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Alerts for detected smishing messages"
+    private fun showSmishingDialog(alert: SmishingAlert) {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("⚠️ Suspicious SMS Detected")
+        builder.setMessage(
+            "This message may be a phishing attempt.\n\n" +
+                    "From: ${alert.phone}\n" +
+                    "Risk: ${alert.riskLevel} (${String.format("%.0f", alert.riskScore)}%)\n\n" +
+                    "Reason: $alert.explanation"
+        )
+        builder.setPositiveButton("View Details") { _, _ ->
+            val intent = Intent(this, MessageDetailActivity::class.java).apply {
+                putExtra("phone", alert.phone)
+                putExtra("date", alert.date)
+                putExtra("message", alert.message)
+                putExtra("risk_score", alert.riskScore.toString())
+                putExtra("status", alert.riskLevel)
+                putExtra("explanation", alert.explanation)
+                putExtra("id", alert.id.toString())
+                putExtra("url_scan_result", alert.urlScanResult)
             }
-            val manager = context.getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
+            startActivity(intent)
         }
+        builder.setNegativeButton("Dismiss", null)
+        builder.show()
     }
 
     private fun renderSmsView(state: SmsUiState) {

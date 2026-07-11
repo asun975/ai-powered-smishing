@@ -11,9 +11,8 @@ import androidx.core.app.NotificationCompat
 import com.example.smishingdetection.MessageDetailActivity
 
 object NotificationHelper {
-
     private const val CHANNEL_ID = "smishing_alerts"
-    private const val CHANNEL_NAME = "Smishing Alerts"
+    private const  val CHANNEL_NAME = "Smishing Alerts"
 
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -28,7 +27,6 @@ object NotificationHelper {
             manager.createNotificationChannel(channel)
         }
     }
-
     fun sendSmishingNotification(
         context: Context,
         userAlert: SmishingAlert

@@ -21,8 +21,10 @@ import com.example.smishingdetection.data.smishingalert.NotificationHelper
 import com.example.smishingdetection.data.smishingalert.SmishingAlert
 import com.example.smishingdetection.data.sms.SmsMessage
 import com.example.smishingdetection.data.sms.SmsRepository
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
@@ -60,13 +62,17 @@ sealed interface ScanUiState {
     object Idle: ScanUiState
     object Loading: ScanUiState
 }
-/*
- * TODO: Updates Main Activity UI
- */
+
 class SmsViewModel (
     private val smsRepository: SmsRepository,
     private val savedStateHandle: SavedStateViewModel
 ): ViewModel() {
+    // Smishing alerts
+    private val _showAlertEvent = MutableSharedFlow<SmishingAlert>()
+    val showAlertEvent = _showAlertEvent.asSharedFlow()
+    private val _sendUserAlert = MutableSharedFlow<SmishingAlert>()
+    val sendUserAlert = _sendUserAlert.asSharedFlow()
+
     // UI state for sms provider
     private val _smsUiState =
         MutableStateFlow<SmsUiState>(SmsUiState.Idle)
@@ -86,6 +92,18 @@ class SmsViewModel (
     private val _scanUiState =
         MutableStateFlow<ScanUiState>(ScanUiState.Idle)
     val scanUiState: StateFlow<ScanUiState> = _scanUiState
+
+    private fun showDialog(alert: SmishingAlert) {
+        viewModelScope.launch {
+            _showAlertEvent.emit(alert)
+        }
+    }
+
+    private fun sendUserAlert(alert: SmishingAlert) {
+        viewModelScope.launch {
+            _sendUserAlert.emit(alert)
+        }
+    }
 
     private fun checkLatestSms() {
         viewModelScope.launch {
@@ -215,37 +233,27 @@ class SmsViewModel (
                         savedStateHandle.scanResult.value
                     )
 
-                    /** TODO: Send user alert
-                    val alert = smsRepository.getMessageById(rowId)
+                    // TODO: Send user alert
+                    val row = smsRepository.getMessageById(rowId)
+                    val alert = SmishingAlert(
+                        savedStateHandle.smsId.value as Long,
+                        row.phoneNumber,
+                        row.date,
+                        row.message,
+                        row.riskScore.toFloat(),
+                        row.status,
+                        row.explanation,
+                        row.urlScanResult
+                    )
 
                     if(AppLifecycleTracker.isAppInForeground) {
-                        showSmishingDialog(alert)
+                        showDialog(alert)
                     } else {
-                        NotificationHelper.sendSmishingNotification(smishingAlert)
+                        sendUserAlert(alert)
                     }
-                    */
                 }
             }
             refresh()
         }
-    }
-    fun showSmishingDialog(
-        alert: SmishingAlert
-    ) {
-        val riskScorePercent = alert.riskScore
-        val builder = AlertDialog.Builder(context)
-        builder.setTitle("⚠️ Suspicious SMS Detected")
-        builder.setMessage(
-            "This message may be a phishing attempt.\n\n" +
-                    "From: ${alert.phone}\n" +
-                    "Risk: ${alert.riskLevel} (${String.format("%.0f", riskScorePercent)}%)\n\n" +
-                    "Reason: ${alert.explanation}"
-        )
-        builder.setPositiveButton("View Details") { _, _ ->
-            val intent = Intent(this, MessageDetailActivity::class.java)
-            startActivity(intent)
-        }
-        builder.setNegativeButton("Dismiss", null)
-        builder.show()
     }
 }
