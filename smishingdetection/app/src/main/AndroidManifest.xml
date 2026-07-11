@@ -19,7 +19,7 @@
 
     <!-- Url API uses HTTP -->
     <application
-        android:name=".SmishingDetectorApplication"
+        android:name=".ui.mainActivity.SmsContainer"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
