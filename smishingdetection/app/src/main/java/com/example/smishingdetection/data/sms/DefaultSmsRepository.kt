@@ -12,6 +12,7 @@ import com.example.smishingdetection.data.network.url.model.UrlAnalyzerResponse
 import com.example.smishingdetection.data.network.url.model.UrlApiResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.serialization.descriptors.StructureKind
 
 interface SmsRepository {
     /*
@@ -67,14 +68,17 @@ class DefaultSmsRepository(
                 }
                 return ClassifierApiResult.Success(
                     ClassifierResponse(
-                        label,
+                        "SPAM",
                         riskScore,
                         riskLevel
                     )
                 )
             }
-            else -> {
+            is ClassifierApiResult.ApiError -> {
                 return result   // pass along error response
+            }
+            is ClassifierApiResult.ExceptionError -> {
+                return result
             }
         }
     }

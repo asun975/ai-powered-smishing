@@ -23,6 +23,8 @@ class NetworkClassifierApiRepository(
             val request = ClassifierRequest(
                 classifierApiSanitizer.sanitize(message)
             )
+            val response = classifierApiService.classify(request)
+
             return ClassifierApiResult.Success(classifierApiService.classify(request))
 
         } catch(e: HttpException) {

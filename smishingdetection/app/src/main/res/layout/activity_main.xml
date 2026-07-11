@@ -23,9 +23,8 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="40dp"/>
 
-    <!-- SMS details: From, AnalyzedMessage, Detected via -->
     <TextView
-        android:id="@+id/smsTextView"
+        android:id="@+id/smsSenderTextView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text=""
@@ -37,12 +36,25 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="20dp"/>
 
-    <!-- LLM Explanation shown below the SMS details -->
+    <TextView
+        android:id="@+id/smsTextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="92dp"
+        android:gravity="start"
+        android:padding="16dp"
+        android:text=""
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/resultTextView" />
+
     <TextView
         android:id="@+id/explanationTextView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="28dp"
+        android:layout_marginTop="40dp"
         android:gravity="start"
         android:lineSpacingExtra="4dp"
         android:padding="16dp"
@@ -53,23 +65,21 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/smsTextView" />
 
-    <!-- Url Analyzer view -->
     <TextView
         android:id="@+id/urlAnalyzerTextView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="108dp"
+        android:layout_marginTop="136dp"
         android:gravity="start"
         android:lineSpacingExtra="4dp"
         android:padding="16dp"
         android:text=""
         android:textSize="15sp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/smsTextView" />
 
-    <!-- Inbox Floating Action Button -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabInbox"
         android:layout_width="wrap_content"
