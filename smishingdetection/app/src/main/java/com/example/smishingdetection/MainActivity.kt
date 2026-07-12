@@ -1,25 +1,20 @@
 package com.example.smishingdetection
 
-import android.content.pm.PackageManager
-import android.os.Bundle
-import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import android.util.Log
-import androidx.core.content.ContextCompat
 import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
+import android.util.Log
+import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import com.example.smishingdetection.data.smishingalert.NotificationHelper
 import com.example.smishingdetection.data.smishingalert.SmishingAlert
 import com.example.smishingdetection.ui.mainActivity.ClassifierUiState
@@ -27,20 +22,16 @@ import com.example.smishingdetection.ui.mainActivity.ExplainerUiState
 import com.example.smishingdetection.ui.mainActivity.ScanUiState
 import com.example.smishingdetection.ui.mainActivity.SmsUiState
 import com.example.smishingdetection.ui.mainActivity.SmsViewModel
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.launch
-
-/*
- * TODO
- * uncouple quarantine db actions
- * add viewModels
- */
 
 class MainActivity : AppCompatActivity() {
     private lateinit var urlAnalyzerTextView: TextView
     private lateinit var smsTextView: TextView
     private lateinit var resultTextView: TextView
     private lateinit var explanationTextView: TextView
-    private val smsViewModel : SmsViewModel by viewModels()
+    private val smsViewModel : SmsViewModel by viewModels { SmsViewModel.Factory }
+
     private lateinit var notificationHelper: NotificationHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,12 +52,10 @@ class MainActivity : AppCompatActivity() {
         findViewById<FloatingActionButton>(R.id.fabInbox).setOnClickListener {
             startActivity(Intent(this, SuspiciousMessagesActivity::class.java))
         }
-
         requestPermissions()
         notificationHelper.createNotificationChannel(applicationContext)
-
+        smsViewModel.processMessage()
         lifecycleScope.launch {
-            smsViewModel.processMessage()
             repeatOnLifecycle((Lifecycle.State.STARTED)) {
                 launch {
                     smsViewModel.smsUiState.collect { uiState ->

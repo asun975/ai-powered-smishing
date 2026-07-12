@@ -2,14 +2,12 @@ package com.example.smishingdetection.ui.mainActivity
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.smishingdetection.data.network.url.model.UrlAnalyzerResponse
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class SavedStateViewModel(private val savedStateHandle: SavedStateHandle) : ViewModel() {
+class SmsSavedStateViewModel(private val savedStateHandle: SavedStateHandle) : ViewModel() {
 
     // Use getMutableStateFlow to read and write the query directly
     private val _smsId: MutableStateFlow<Long?> = savedStateHandle.getMutableStateFlow("smsId", null)
@@ -103,4 +101,5 @@ class SavedStateViewModel(private val savedStateHandle: SavedStateHandle) : View
         _riskLevel.value = ""
         _smsDate.value = ""
     }
+    override fun crea
 }

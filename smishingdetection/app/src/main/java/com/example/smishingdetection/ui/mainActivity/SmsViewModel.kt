@@ -1,15 +1,13 @@
 package com.example.smishingdetection.ui.mainActivity
 
-import android.content.Intent
-import android.os.Build
-import android.provider.Contacts
 import android.util.Log
-import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.smishingdetection.AppLifecycleTracker
-import com.example.smishingdetection.MessageDetailActivity
-import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import com.example.smishingdetection.data.network.classifier.model.ClassifierApiResult
 import com.example.smishingdetection.data.network.classifier.model.ClassifierResponse
 import com.example.smishingdetection.data.network.explainer.model.ExplainerApiResult
@@ -17,20 +15,16 @@ import com.example.smishingdetection.data.network.explainer.model.ExplainerReque
 import com.example.smishingdetection.data.network.explainer.model.ExplainerResponse
 import com.example.smishingdetection.data.network.url.model.UrlAnalyzerResponse
 import com.example.smishingdetection.data.network.url.model.UrlApiResult
-import com.example.smishingdetection.data.smishingalert.NotificationHelper
 import com.example.smishingdetection.data.smishingalert.SmishingAlert
 import com.example.smishingdetection.data.sms.SmsMessage
 import com.example.smishingdetection.data.sms.SmsRepository
+import com.example.smishingdetection.ui.block.BlockContainer
+import com.example.smishingdetection.ui.block.BlockViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Date
-import java.util.Locale
 
 sealed interface SmsUiState {
     data class Success(val smsMessage: SmsMessage): SmsUiState
@@ -65,7 +59,7 @@ sealed interface ScanUiState {
 
 class SmsViewModel (
     private val smsRepository: SmsRepository,
-    private val savedStateHandle: SavedStateViewModel
+    private val savedStateHandle: SmsSavedStateViewModel
 ): ViewModel() {
     // Smishing alerts
     private val _showAlertEvent = MutableSharedFlow<SmishingAlert>()
@@ -254,6 +248,19 @@ class SmsViewModel (
                 }
             }
             refresh()
+        }
+    }
+    // Define ViewModel factory in a companion object
+    companion object {
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                val repository =
+                    (this[ViewModelProvider
+                        .AndroidViewModelFactory.Companion.APPLICATION_KEY] as SmsContainer)
+                        .smsRepository
+                val savedStateHandle = SmsSavedStateViewModel
+                SmsViewModel(repository, savedStateHandle)
+            }
         }
     }
 }
