@@ -24,6 +24,22 @@ We evaluated the model using scikit learn metrics for accuracy, F1 score, precis
 - **Precision**: 94.5%
 - **Recall**: 97.6%
 
+### Risk Score System
+Risk score is derived from the confidence level and label returned by classifier. 
+```
+private fun getRiskScore(label: String, confidence: Float): Pair<Float, String> { 
+    val riskScore = if (label == "SPAM") confidence else (1 - confidence) 
+    val riskLevel = when { 
+        riskScore > 0.75 -> "HIGH" 
+        riskScore >= 0.30 -> "MEDIUM" 
+        else -> "LOW" 
+    } 
+    return Pair(riskScore, riskLevel) 
+} 
+```
+#### How the confidence score is calculated by the classifier model
+When an SMS message is passed through the model, it is first tokenized into smaller units (tokens), which are then embedded into numerical vectors. These embeddings are processed through multiple transformer layers that use learned weights and attention mechanisms to capture contextual relationships between words, such as urgency, intent, and suspicious patterns. The final layer of the model outputs raw prediction values called logits, which are then passed through a SoftMax function to convert them into probabilities. The highest probability corresponds to the predicted class, and this value is reported as the confidence score. Therefore, the confidence score is influenced by the model’s learned parameters (weights and biases), the contextual meaning of the input text, and the relative strength of features such as keywords, structure, and semantic patterns identified during training. 
+
 ## Project Structure
 ```
 .
