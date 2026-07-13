@@ -9,11 +9,16 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
 
 class MessageAdapter(
-    private var messages: List<AnalyzedMessage>,
     private val onItemClick: (AnalyzedMessage) -> Unit,
     private val onMenuClick: (AnalyzedMessage, View) -> Unit
 ) : RecyclerView.Adapter<MessageAdapter.ViewHolder>() {
+    private val messages = mutableListOf<AnalyzedMessage>()
 
+    fun submitList(items: List<AnalyzedMessage>) {
+        messages.clear()
+        messages.addAll(items)
+        notifyDataSetChanged()
+    }
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val dateText: TextView = view.findViewById(R.id.tvDate)
         val messageText: TextView = view.findViewById(R.id.tvMessage)
@@ -42,8 +47,4 @@ class MessageAdapter(
 
     override fun getItemCount() = messages.count()
 
-    fun updateData(newMessages: List<AnalyzedMessage>) {
-        messages = newMessages
-        notifyDataSetChanged()
-    }
 }

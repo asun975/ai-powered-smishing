@@ -7,11 +7,16 @@ import android.view.View
 import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
+import com.example.smishingdetection.ui.quarantine.MessageTab
+import com.example.smishingdetection.ui.quarantine.SuspiciousMessagesViewModel
 import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.launch
 
@@ -20,70 +25,58 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
     private lateinit var adapter: MessageAdapter
     private lateinit var emptyView: TextView
     private lateinit var tabLayout: TabLayout
-    private lateinit var db: DatabaseHelper
-
+    private val viewModel: SuspiciousMessagesViewModel by viewModels{
+        SuspiciousMessagesViewModel.Factory
+    }
     private var currentTab = "caution"  // "caution" or "quarantined"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_suspicious_messages)
 
+        setContentView(R.layout.activity_suspicious_messages)
         supportActionBar?.apply {
             title = "AI Smishing"
             setDisplayHomeAsUpEnabled(true)
         }
-
         recyclerView = findViewById(R.id.recyclerView)
         emptyView = findViewById(R.id.tvEmpty)
         tabLayout = findViewById(R.id.tabLayout)
 
-        db = DatabaseHelper(application) // get database instance
         adapter = MessageAdapter(
-            mutableListOf(),
-            onItemClick = { msg -> openDetail(msg) },
-            onMenuClick = { msg, anchor -> showPopupMenu(msg, anchor) }
+            onItemClick = ::openDetail,
+            onMenuClick = ::showPopupMenu
         )
 
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
 
-        tabLayout.addTab(tabLayout.newTab().setText("Caution"))
-        tabLayout.addTab(tabLayout.newTab().setText("Quarantine"))
-
-        tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab) {
-                currentTab = if (tab.position == 0) "caution" else "quarantined"
-                loadMessages()
-            }
-            override fun onTabUnselected(tab: TabLayout.Tab) {}
-            override fun onTabReselected(tab: TabLayout.Tab) {}
-        })
-
-        loadMessages()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        loadMessages()
-    }
-
-    private fun loadMessages() {
         lifecycleScope.launch {
-            db.getByStatus(currentTab).collect { messages ->
-                adapter.updateData(messages)
-                if (messages.isEmpty()) {
-                    // show empty state
-                    recyclerView.visibility = View.GONE
-                    emptyView.visibility = View.VISIBLE
-                    emptyView.text = if (currentTab == "caution")
-                        "No caution messages" else "No quarantined messages"
-                } else {
-                    // show data
-                    recyclerView.visibility = View.VISIBLE
-                    emptyView.visibility = View.GONE
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch{
+                    viewModel.messages.collect(adapter::submitList)
+                }
+                launch {
+                     viewModel.toastEvent.collect { message ->
+                        Toast.makeText(this@SuspiciousMessagesActivity, message, Toast.LENGTH_SHORT)
+                            .show()
+                    }
                 }
             }
         }
+
+        tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                when(tab.position) {
+                    0 -> viewModel.selectTab(MessageTab.CAUTION)
+                    1 -> viewModel.selectTab(MessageTab.QUARANTINE)
+                }
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab) = Unit
+            override fun onTabReselected(tab: TabLayout.Tab) = Unit
+        })
+
+        // Load initial tab
+        viewModel.selectTab(MessageTab.CAUTION)
     }
 
     private fun openDetail(msg: AnalyzedMessage) {
@@ -108,21 +101,16 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
 
         popup.setOnMenuItemClickListener { item: MenuItem ->
             when (item.itemId) {
-                1 -> openDetail(msg)
+                1 -> {
+                    openDetail(msg)
+                    true
+                }
+
                 2 -> {
-                    val id = msg.id
-                    if (currentTab == "caution") {
-                        lifecycleScope.launch {
-                            db.quarantineMessage(id)
-                        }
-                        Toast.makeText(this, "AnalyzedMessage moved to quarantine!", Toast.LENGTH_SHORT).show()
-                    } else {
-                        lifecycleScope.launch {
-                            db.markAsSafe(id)
-                        }
-                        Toast.makeText(this, "AnalyzedMessage marked as safe", Toast.LENGTH_SHORT).show()
+                    viewModel.moveTabs(msg.id)
                     }
-                    loadMessages()
+                else -> {
+
                 }
             }
             true

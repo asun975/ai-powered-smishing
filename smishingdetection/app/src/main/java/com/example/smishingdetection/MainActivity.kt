@@ -15,8 +15,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import com.example.smishingdetection.data.smishingalert.NotificationHelper
-import com.example.smishingdetection.data.smishingalert.SmishingAlert
 import com.example.smishingdetection.ui.mainActivity.ClassifierUiState
 import com.example.smishingdetection.ui.mainActivity.ExplainerUiState
 import com.example.smishingdetection.ui.mainActivity.ScanUiState
@@ -54,9 +54,9 @@ class MainActivity : AppCompatActivity() {
         }
         requestPermissions()
         notificationHelper.createNotificationChannel(applicationContext)
-        smsViewModel.processMessage()
         lifecycleScope.launch {
             repeatOnLifecycle((Lifecycle.State.STARTED)) {
+                smsViewModel.processMessage()
                 launch {
                     smsViewModel.smsUiState.collect { uiState ->
                         renderSmsView(uiState)
@@ -133,24 +133,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showSmishingDialog(alert: SmishingAlert) {
+    private fun showSmishingDialog(alert: AnalyzedMessage) {
         val builder = AlertDialog.Builder(this)
         builder.setTitle("⚠️ Suspicious SMS Detected")
         builder.setMessage(
             "This message may be a phishing attempt.\n\n" +
-                    "From: ${alert.phone}\n" +
-                    "Risk: ${alert.riskLevel} (${String.format("%.0f", alert.riskScore)}%)\n\n" +
+                    "From: ${alert.phoneNumber}\n" +
+                    "Risk: ${alert.status} (${String.format("%.0f", alert.riskScore)}%)\n\n" +
                     "Reason: $alert.explanation"
         )
         builder.setPositiveButton("View Details") { _, _ ->
             val intent = Intent(this, MessageDetailActivity::class.java).apply {
-                putExtra("phone", alert.phone)
+                putExtra("phone", alert.phoneNumber)
                 putExtra("date", alert.date)
                 putExtra("message", alert.message)
                 putExtra("risk_score", alert.riskScore.toString())
-                putExtra("status", alert.riskLevel)
+                putExtra("status", alert.status)
                 putExtra("explanation", alert.explanation)
-                putExtra("id", alert.id.toString())
+                putExtra("id", alert.id)
                 putExtra("url_scan_result", alert.urlScanResult)
             }
             startActivity(intent)
