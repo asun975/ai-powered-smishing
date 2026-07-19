@@ -1,7 +1,6 @@
 package com.example.smishingdetection.ui.quarantine
 
 import android.util.Log
-import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -13,10 +12,7 @@ import com.example.smishingdetection.MyApplication
 import com.example.smishingdetection.data.local.BlockRepository
 import com.example.smishingdetection.data.local.QuarantineRepository
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
-import com.example.smishingdetection.data.local.model.BlockedPhoneNumber
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -39,7 +35,8 @@ class MessageDetailViewModel(
 ) : ViewModel() {
     private val _messageDetailUiState = MutableStateFlow(DetailUiState())
     val messageDetailUiState = _messageDetailUiState.asStateFlow()
-    private val messageId = savedStateHandle.get<Long>("id") ?: -1
+    private val _rowId = MutableStateFlow(savedStateHandle.get<Long>("id") ?: -1)
+    val rowId = _rowId.asStateFlow()
 
     fun loadMessage(id: Long) {
         viewModelScope.launch {
@@ -79,7 +76,7 @@ class MessageDetailViewModel(
     }
     fun quarantine() {
         viewModelScope.launch {
-            quarantineRepository.quarantineMessage(messageId)
+            quarantineRepository.quarantineMessage(rowId.value)
             _messageDetailUiState.update {
                 it.copy(
                     status = DetailViewStatus.QUARANTINE
@@ -91,7 +88,7 @@ class MessageDetailViewModel(
 
     fun deleteMessage() {
         viewModelScope.launch {
-            quarantineRepository.markAsSafe(messageId)
+            quarantineRepository.markAsSafe(rowId.value)
             _messageDetailUiState.update {
                 it.copy(
                     isDeleted = true
