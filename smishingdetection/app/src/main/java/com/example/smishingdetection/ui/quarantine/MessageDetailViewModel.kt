@@ -1,5 +1,6 @@
 package com.example.smishingdetection.ui.quarantine
 
+import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -42,30 +43,35 @@ class MessageDetailViewModel(
 
     fun loadMessage(id: Long) {
         viewModelScope.launch {
-            val message = quarantineRepository.getMessageById(id)
-            val getStatus = when(message.status) {
-                "HIGH" -> DetailViewStatus.QUARANTINE
-                else -> DetailViewStatus.CAUTION
-            }
-            if (message.phoneNumber != "Unknown") {
-                val sender = message.phoneNumber
-                val getBlocked = blockRepository.checkBlockList(sender)
-                _messageDetailUiState.update {
-                    it.copy(
-                        isLoading = false,
-                        analyzedMessage = message,
-                        status = getStatus,
-                        isBlocked = getBlocked
-                    )
+
+                if (id == null) {
+                    Log.d("Debug", "received null from intent/saved state!")
+                } else {
+                val message = quarantineRepository.getMessageById(id)
+                val getStatus = when (message.status) {
+                    "HIGH" -> DetailViewStatus.QUARANTINE
+                    else -> DetailViewStatus.CAUTION
                 }
-            } else {
-                _messageDetailUiState.update {
-                    it.copy(
-                        isLoading = false,
-                        analyzedMessage = message,
-                        status = getStatus,
-                        unknownSender = true
-                    )
+                if (message.phoneNumber != "Unknown") {
+                    val sender = message.phoneNumber
+                    val getBlocked = blockRepository.checkBlockList(sender)
+                    _messageDetailUiState.update {
+                        it.copy(
+                            isLoading = false,
+                            analyzedMessage = message,
+                            status = getStatus,
+                            isBlocked = getBlocked
+                        )
+                    }
+                } else {
+                    _messageDetailUiState.update {
+                        it.copy(
+                            isLoading = false,
+                            analyzedMessage = message,
+                            status = getStatus,
+                            unknownSender = true
+                        )
+                    }
                 }
             }
 
@@ -116,7 +122,8 @@ class MessageDetailViewModel(
                         .defaultBlockRepository
                 val quarantineRepository =
                     (this[ViewModelProvider
-                        .AndroidViewModelFactory.Companion.APPLICATION_KEY] as MyApplication)
+                        .AndroidViewModelFactory.Companion.APPLICATION_KEY] as MyApplication
+                            )
                         .quarantineRepository
                 val savedStateHandle = createSavedStateHandle()
                 MessageDetailViewModel(quarantineRepository, blockRepository, savedStateHandle)

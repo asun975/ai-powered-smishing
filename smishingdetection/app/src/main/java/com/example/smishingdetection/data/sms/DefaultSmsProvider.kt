@@ -2,6 +2,7 @@ package com.example.smishingdetection.data.sms
 
 import android.content.Context
 import android.provider.Telephony
+import android.util.Log
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +37,9 @@ class DefaultSmsProvider(
                 null,
                 "${Telephony.Sms.DATE} DESC"
             )?.use { cursor ->
+                Log.d("SMS", "cursor = $cursor")
                 if (cursor.moveToFirst() && cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID)) != lastProcessedId) {
+                    Log.d("Debug content provider", "returned row")
                     return@withContext SmsMessage(
                         id = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID)),
                         address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)) ?: "Unknown",
@@ -45,6 +48,7 @@ class DefaultSmsProvider(
                     )
                 }
             }
+            Log.d("Debug content provider", "last processed id $lastProcessedId")
             return@withContext null
         }
 

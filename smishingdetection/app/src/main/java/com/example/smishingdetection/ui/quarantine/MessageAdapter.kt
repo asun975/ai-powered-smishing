@@ -1,4 +1,4 @@
-package com.example.smishingdetection
+package com.example.smishingdetection.ui.quarantine
 
 import android.view.LayoutInflater
 import android.view.View
@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.example.smishingdetection.R
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
 
 class MessageAdapter(

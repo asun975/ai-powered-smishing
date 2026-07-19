@@ -33,7 +33,7 @@
         android:usesCleartextTraffic="true">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.mainActivity.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -43,14 +43,14 @@
 
         <!-- REMOVED SmsReceiver - using dynamic registration in MainActivity instead -->
         <activity
-            android:name=".SuspiciousMessagesActivity"
+            android:name=".ui.quarantine.SuspiciousMessagesActivity"
             android:exported="false"
-            android:parentActivityName=".MainActivity"/>
+            android:parentActivityName=".ui.mainActivity.MainActivity"/>
 
         <activity
-            android:name=".MessageDetailActivity"
+            android:name=".ui.quarantine.MessageDetailActivity"
             android:exported="false"
-            android:parentActivityName=".SuspiciousMessagesActivity"/>
+            android:parentActivityName=".ui.quarantine.SuspiciousMessagesActivity"/>
 
     </application>
 

@@ -6,6 +6,8 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.example.smishingdetection.data.local.model.BlockedPhoneNumber
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Dao
 interface BlockedPhoneNumberDao{
@@ -16,7 +18,7 @@ interface BlockedPhoneNumberDao{
     suspend fun delete(phone: BlockedPhoneNumber)
 
     @Query("SELECT * FROM blockedPhoneNumbers")
-    fun getAll(): List<BlockedPhoneNumber>
+    suspend fun getAll(): List<BlockedPhoneNumber>
 
     @Query("SELECT EXISTS(SELECT 1 FROM blockedPhoneNumbers WHERE phone = :phone)")
     suspend fun exists(phone: String): Boolean

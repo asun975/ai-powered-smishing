@@ -15,7 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.example.smishingdetection.MessageDetailActivity
+import com.example.smishingdetection.ui.quarantine.MessageDetailActivity
 import com.example.smishingdetection.MyApplication
 import com.example.smishingdetection.data.local.BlockRepository
 import com.example.smishingdetection.data.local.QuarantineRepository
@@ -34,10 +34,11 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class SuspiciousMessageUiState(
     val selectedTab: MessageTab = MessageTab.CAUTION,
-    val messages: Flow<List<AnalyzedMessage>> = flowOf(emptyList()),
+    val messages: List<AnalyzedMessage> = emptyList(),
     val isLoading: Boolean = false
 )
 
@@ -58,17 +59,12 @@ class SuspiciousMessagesViewModel(
     val toastEvent = _toastEvent.asSharedFlow()
     private val _suspiciousMessageUiState = MutableStateFlow(SuspiciousMessageUiState())
     val suspiciousMessageUiState = _suspiciousMessageUiState.asStateFlow()
-    val messages: StateFlow<List<AnalyzedMessage>> = quarantineRepository.getMessagesByStatus(suspiciousMessageUiState.value.selectedTab.status)
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            emptyList()
-        )
 
     fun selectTab(tab: MessageTab) {
         _suspiciousMessageUiState.update { it.copy(selectedTab = tab) }
         loadMessages(tab)
     }
+
     fun moveTabs(id: Long) {
         viewModelScope.launch {
             val currentTab = suspiciousMessageUiState.value.selectedTab
@@ -81,7 +77,8 @@ class SuspiciousMessagesViewModel(
             }
         }
     }
-    private fun loadMessages(tab: MessageTab) {
+
+    fun loadMessages(tab: MessageTab) {
         viewModelScope.launch {
             val messages = quarantineRepository.getMessagesByStatus(tab.status)
             _suspiciousMessageUiState.update {
@@ -92,21 +89,26 @@ class SuspiciousMessagesViewModel(
         }
     }
 
-    // Define ViewModel factory in a companion object
-    companion object {
-        val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer {
-                val blockRepository =
-                    (this[ViewModelProvider
-                        .AndroidViewModelFactory.Companion.APPLICATION_KEY] as MyApplication)
-                        .defaultBlockRepository
-                val quarantineRepository =
-                    (this[ViewModelProvider
-                        .AndroidViewModelFactory.Companion.APPLICATION_KEY] as MyApplication)
-                        .quarantineRepository
-                val savedStateHandle = createSavedStateHandle()
-                SuspiciousMessagesViewModel(quarantineRepository, blockRepository, savedStateHandle)
+        // Define ViewModel factory in a companion object
+        companion object {
+            val Factory: ViewModelProvider.Factory = viewModelFactory {
+                initializer {
+                    val blockRepository =
+                        (this[ViewModelProvider
+                            .AndroidViewModelFactory.Companion.APPLICATION_KEY] as MyApplication)
+                            .defaultBlockRepository
+                    val quarantineRepository =
+                        (this[ViewModelProvider
+                            .AndroidViewModelFactory.Companion.APPLICATION_KEY] as MyApplication)
+                            .quarantineRepository
+                    val savedStateHandle = createSavedStateHandle()
+                    SuspiciousMessagesViewModel(
+                        quarantineRepository,
+                        blockRepository,
+                        savedStateHandle
+                    )
+                }
             }
         }
     }
-}
+

@@ -1,4 +1,4 @@
-package com.example.smishingdetection
+package com.example.smishingdetection.ui.quarantine
 
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner

@@ -1,4 +1,4 @@
-package com.example.smishingdetection
+package com.example.smishingdetection.ui.mainActivity
 
 import android.Manifest
 import android.content.Intent
@@ -15,13 +15,12 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.example.smishingdetection.ui.quarantine.MessageDetailActivity
+import com.example.smishingdetection.R
+import com.example.smishingdetection.ui.quarantine.SuspiciousMessagesActivity
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import com.example.smishingdetection.data.smishingalert.NotificationHelper
-import com.example.smishingdetection.ui.mainActivity.ClassifierUiState
-import com.example.smishingdetection.ui.mainActivity.ExplainerUiState
-import com.example.smishingdetection.ui.mainActivity.ScanUiState
-import com.example.smishingdetection.ui.mainActivity.SmsUiState
-import com.example.smishingdetection.ui.mainActivity.SmsViewModel
+import com.example.smishingdetection.data.sms.SmsContentObserver
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.launch
 
@@ -31,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var resultTextView: TextView
     private lateinit var explanationTextView: TextView
     private val smsViewModel : SmsViewModel by viewModels { SmsViewModel.Factory }
+    private lateinit var smsContentObserver: SmsContentObserver
 
     private lateinit var notificationHelper: NotificationHelper
 
@@ -129,8 +129,15 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == 999) {
             if (grantResults.all { it != PackageManager.PERMISSION_GRANTED }) {
                 resultTextView.text = "❌ Permissions needed!"
+            } else {
+                smsContentObserver.register()
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        smsContentObserver.unregister()
     }
 
     private fun showSmishingDialog(alert: AnalyzedMessage) {
@@ -213,7 +220,7 @@ class MainActivity : AppCompatActivity() {
                 resultTextView.text = state.message.message
             }
             is ClassifierUiState.Exception -> {
-                resultTextView.text = state.error.message
+                resultTextView.text = state.error.exception
             }
         }
     }
@@ -234,7 +241,7 @@ class MainActivity : AppCompatActivity() {
                 explanationTextView.text = state.error.message
             }
             is ExplainerUiState.Exception -> {
-                explanationTextView.text = state.error.message
+                explanationTextView.text = state.error.exeception
             }
         }
     }

@@ -25,14 +25,15 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "analyzed_messages")
 data class AnalyzedMessage(
     @PrimaryKey(autoGenerate = true) val id: Long,
-    @ColumnInfo(name = "phone_number") val phoneNumber: String,
+    @ColumnInfo(name = "phone_number", defaultValue = "Unknown") val phoneNumber: String,
     @ColumnInfo(name = "date") val date: String,
     @ColumnInfo(name = "message") val message: String,
     @ColumnInfo(name = "risk_score") val riskScore: Double,
     @ColumnInfo(name = "status") val status: String = when {
-        riskScore >= 70.0 -> "quarantine"
-        else -> "caution"
+        riskScore >= 70.0 -> RiskCategory.HIGH.categoryName
+        riskScore >= 30 -> RiskCategory.MEDIUM.categoryName
+        else -> RiskCategory.LOW.categoryName
     },
-    @ColumnInfo(name = "explanation", defaultValue = "") val explanation: String = "",
-    @ColumnInfo(name = "url_scan_result", defaultValue = "") val urlScanResult: String = ""
+    @ColumnInfo(name = "explanation", defaultValue = "No explanation available.") val explanation: String,
+    @ColumnInfo(name = "url_scan_result", defaultValue = "No scan result available.") val urlScanResult: String
 )

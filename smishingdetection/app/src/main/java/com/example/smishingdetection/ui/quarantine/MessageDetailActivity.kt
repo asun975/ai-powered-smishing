@@ -1,4 +1,4 @@
-package com.example.smishingdetection
+package com.example.smishingdetection.ui.quarantine
 
 import android.app.AlertDialog
 import android.content.ClipData
@@ -17,16 +17,14 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.example.smishingdetection.data.local.model.BlockedPhoneNumber
-import com.example.smishingdetection.ui.quarantine.DetailViewStatus
-import com.example.smishingdetection.ui.quarantine.MessageDetailViewModel
+import com.example.smishingdetection.R
 import kotlinx.coroutines.launch
 
 class MessageDetailActivity : AppCompatActivity() {
     private var messageId: Long = -1
     private var status: String = "caution"
     private var phoneNumber: String = ""
-    private val viewModel: MessageDetailViewModel by viewModels{
+    private val viewModel: MessageDetailViewModel by viewModels {
         MessageDetailViewModel.Factory
     }
 

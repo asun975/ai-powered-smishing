@@ -4,9 +4,12 @@ import android.os.Build
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import com.example.smishingdetection.data.local.database.AnalyzedMessageDao
 import com.example.smishingdetection.data.network.url.model.UrlAnalyzerResponse
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -26,12 +29,13 @@ interface AnalyzedMessageRepository {
     suspend fun quarantineMessage(messageId: Long)
     suspend fun markAsSafe(messageId: Long)
     suspend fun countByStatus(status: String): Int
-    fun getAllMessages(): Flow<List<AnalyzedMessage>>
-    fun getMessagesByStatus(status: String) : Flow<List<AnalyzedMessage>>
+    suspend fun getAllMessages(): List<AnalyzedMessage>
+    suspend fun getMessagesByStatus(status: String) : List<AnalyzedMessage>
 }
 
 class QuarantineRepository(
-    private val localDataSource: AnalyzedMessageDao
+    private val localDataSource: AnalyzedMessageDao,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ): AnalyzedMessageRepository {
 
     override suspend fun insertMessage(
@@ -41,8 +45,9 @@ class QuarantineRepository(
         riskScore: Double,
         explanation: String?,
         urlVerdict: UrlAnalyzerResponse?
-    ): Long {
-        // Format date/timestamp
+    ): Long =
+        withContext(ioDispatcher) {
+        // Separate datetime formatting for API 25 and 24
         val timestamp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
         } else {
@@ -73,10 +78,11 @@ class QuarantineRepository(
             urlScanResult = scanResult
         )
         val messageId = localDataSource.insertMessage(message)
-        return messageId
+        return@withContext messageId
     }
 
     override suspend fun getMessageById(messageId: Long): AnalyzedMessage {
+        // TODO check for null id
         return localDataSource.getById(messageId)
     }
 
@@ -93,11 +99,12 @@ class QuarantineRepository(
         return localDataSource.countByStatus(status)
     }
 
-    override fun getAllMessages(): Flow<List<AnalyzedMessage>> {
-        return localDataSource.getAll().distinctUntilChanged()
+    override suspend fun getAllMessages(): List<AnalyzedMessage> {
+        return localDataSource.getAll()
+
     }
 
-    override fun getMessagesByStatus(status: String): Flow<List<AnalyzedMessage>> {
+    override suspend fun getMessagesByStatus(status: String): List<AnalyzedMessage> {
         return localDataSource.getByStatus(status)
     }
 }

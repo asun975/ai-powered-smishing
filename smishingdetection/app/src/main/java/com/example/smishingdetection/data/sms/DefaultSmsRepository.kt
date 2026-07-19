@@ -12,9 +12,13 @@ import com.example.smishingdetection.data.network.url.NetworkUrlApiRepository
 import com.example.smishingdetection.data.network.url.model.UrlAnalyzerResponse
 import com.example.smishingdetection.data.network.url.model.UrlApiResult
 import com.example.smishingdetection.data.sanitizer.ClassifierApiSanitizer
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.descriptors.StructureKind
+import okhttp3.Dispatcher
 
 interface SmsRepository {
     /*
@@ -46,14 +50,16 @@ class DefaultSmsRepository(
     private val classifierApiRepository: NetworkClassifierApiRepository,
     private val explainerApiRepository: NetworkExplainerApiRepository,
     private val urlApiRepository: NetworkUrlApiRepository,
-    private val quarantineRepository: QuarantineRepository
+    private val quarantineRepository: QuarantineRepository,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 
 ): SmsRepository {
     override suspend fun checkLatestSms(lastProcessedId: Long?): SmsMessage? {
         return smsProvider.getLatestSms(lastProcessedId)
     }
 
-    override suspend fun classifyMessage(message: String): ClassifierApiResult {
+    override suspend fun classifyMessage(message: String): ClassifierApiResult =
+        withContext(ioDispatcher) {
         val input: String? = message
         // Handle successful and failed requests to classifier API
         when (val result = classifierApiRepository.classify(input)) {
@@ -68,7 +74,7 @@ class DefaultSmsRepository(
                     riskScore >= 0.30 -> "MEDIUM"
                     else -> "LOW"
                 }
-                return ClassifierApiResult.Success(
+                return@withContext ClassifierApiResult.Success(
                     ClassifierResponse(
                         "SPAM",
                         riskScore,
@@ -77,10 +83,10 @@ class DefaultSmsRepository(
                 )
             }
             is ClassifierApiResult.ApiError -> {
-                return result   // pass along error response
+                return@withContext result   // pass along error response
             }
             is ClassifierApiResult.ExceptionError -> {
-                return result
+                return@withContext result
             }
         }
     }

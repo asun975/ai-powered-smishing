@@ -8,7 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.example.smishingdetection.MessageDetailActivity
+import com.example.smishingdetection.ui.quarantine.MessageDetailActivity
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
 
 object NotificationHelper {

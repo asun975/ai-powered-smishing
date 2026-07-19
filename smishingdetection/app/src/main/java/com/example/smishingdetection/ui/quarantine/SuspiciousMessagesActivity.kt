@@ -1,4 +1,4 @@
-package com.example.smishingdetection
+package com.example.smishingdetection.ui.quarantine
 
 import android.content.Intent
 import android.os.Bundle
@@ -14,9 +14,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.smishingdetection.R
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
-import com.example.smishingdetection.ui.quarantine.MessageTab
-import com.example.smishingdetection.ui.quarantine.SuspiciousMessagesViewModel
 import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.launch
 
@@ -25,7 +24,7 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
     private lateinit var adapter: MessageAdapter
     private lateinit var emptyView: TextView
     private lateinit var tabLayout: TabLayout
-    private val viewModel: SuspiciousMessagesViewModel by viewModels{
+    private val viewModel: SuspiciousMessagesViewModel by viewModels {
         SuspiciousMessagesViewModel.Factory
     }
     private var currentTab = "caution"  // "caution" or "quarantined"
@@ -53,7 +52,11 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch{
-                    viewModel.messages.collect(adapter::submitList)
+                    viewModel.suspiciousMessageUiState.collect { state->
+                        val tab = state.selectedTab
+                        viewModel.loadMessages(tab)
+                        adapter.submitList(state.messages)
+                    }
                 }
                 launch {
                      viewModel.toastEvent.collect { message ->

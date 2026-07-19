@@ -7,7 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.example.smishingdetection.AppLifecycleTracker
+import com.example.smishingdetection.ui.quarantine.AppLifecycleTracker
 import com.example.smishingdetection.MyApplication
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import com.example.smishingdetection.data.network.classifier.model.ClassifierApiResult
@@ -197,7 +197,7 @@ class SmsViewModel (
             _smsUiState.value = SmsUiState.Loading
             when(val newMessage = smsRepository.checkLatestSms(lastProcessedSmsId.value)) {
                 null -> {
-                    // No new messages
+                    Log.d("MainActivity", "null id returned by content provider")
                     _smsUiState.value = SmsUiState.Idle
                 }
                 is SmsMessage -> {
@@ -296,9 +296,15 @@ class SmsViewModel (
     // TODO
     fun processMessage() {
         viewModelScope.launch {
+            // Debug ui states
+            _smsUiState.value = SmsUiState.Idle
+            _classifierUiState.value = ClassifierUiState.Idle
+            _explainerUiState.value = ExplainerUiState.Idle
+            _scanUiState.value = ScanUiState.Idle
+
             checkLatestSms() // get latest sms using database observer
             val message = smsBody.value
-            if(message != null) {
+            if(!message.isNullOrEmpty()) {
                 // Use classifier API model and send urls to sandbox
                 classify(smsBody.value)
                 scan(smsBody.value)

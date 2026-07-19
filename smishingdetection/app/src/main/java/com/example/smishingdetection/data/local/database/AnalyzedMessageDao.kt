@@ -14,7 +14,7 @@ interface AnalyzedMessageDao {
     /**
      * Insert a new analyzed message. Returns the new row ID, or -1 on failure.
      */
-    @Insert(onConflict = OnConflictStrategy.Companion.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertMessage(message: AnalyzedMessage): Long
 
     /** Delete a message by its row ID. */
@@ -25,20 +25,20 @@ interface AnalyzedMessageDao {
      * Get all messages, newest first.
      */
     @Query("SELECT * FROM analyzed_messages ORDER BY date")
-    fun getAll(): Flow<List<AnalyzedMessage>>
+    suspend fun getAll(): List<AnalyzedMessage>
 
     /**
      * Get all messages with a given status ("safe" | "caution" | "quarantined"),
      * newest first.
      */
     @Query("SELECT * FROM analyzed_messages WHERE status = :status ORDER BY date")
-    fun getByStatus(status: String): Flow<List<AnalyzedMessage>>
+    suspend fun getByStatus(status: String): List<AnalyzedMessage>
 
     @Query("SELECT COUNT(*) FROM analyzed_messages WHERE status = :status")
     suspend fun countByStatus(status: String): Int
 
     @Query("SELECT * FROM analyzed_messages WHERE id = :id")
-    fun getById(id: Long): AnalyzedMessage
+    suspend fun getById(id: Long): AnalyzedMessage
 
     /** Update the status of a message (e.g. promote caution → quarantined). */
     @Query(
