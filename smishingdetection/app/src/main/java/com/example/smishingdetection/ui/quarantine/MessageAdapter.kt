@@ -36,8 +36,8 @@ class MessageAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val msg = messages[position]
 
-        holder.dateText.text = msg.date ?: ""
-        holder.messageText.text = msg.message ?: ""
+        holder.dateText.text = msg.date
+        holder.messageText.text = msg.message
 
         val score = msg.riskScore
         holder.riskScore.text = String.format("%.0f%%", score)

@@ -55,7 +55,9 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
                     viewModel.suspiciousMessageUiState.collect { state->
                         val tab = state.selectedTab
                         viewModel.loadMessages(tab)
-                        adapter.submitList(state.messages)
+                        state.messages.collect { messages ->
+                            adapter.submitList(messages)
+                        }
                     }
                 }
                 launch {
@@ -83,15 +85,9 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
     }
 
     private fun openDetail(msg: AnalyzedMessage) {
+
         val intent = Intent(this, MessageDetailActivity::class.java).apply {
-            putExtra("phone", msg.phoneNumber)
-            putExtra("date", msg.date)
-            putExtra("message", msg.message)
-            putExtra("risk_score", msg.riskScore)
-            putExtra("status", msg.status)
-            putExtra("explanation", msg.explanation)
             putExtra("id", msg.id)
-            putExtra("url_scan_result", msg.urlScanResult ?: "")
         }
         startActivity(intent)
     }

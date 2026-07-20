@@ -13,17 +13,17 @@ import com.example.smishingdetection.data.network.url.NetworkUrlApiRepository
 import com.example.smishingdetection.data.network.url.UrlApiService
 import com.example.smishingdetection.data.sanitizer.ClassifierApiSanitizer
 import com.example.smishingdetection.data.sanitizer.ExplainerApiSanitizer
-import com.example.smishingdetection.data.sms.DefaultSmsProvider
-import com.example.smishingdetection.data.sms.DefaultSmsRepository
-import com.example.smishingdetection.data.sms.SmsRepository
+import com.example.smishingdetection.data.sms.DefaultSmsRespository
 import kotlinx.coroutines.Dispatchers
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 
 class MyApplication: Application() {
     // SMS Provider
     private val ioDispatcher = Dispatchers.IO
-    private val defaultSmsProvider = DefaultSmsProvider(this, ioDispatcher)
+    val defaultSmsRepository = DefaultSmsRespository(this, ioDispatcher)
     // Block Repository
     private val blockDataSource by lazy {
         SmishingDetectorDb.Companion.getDatabase(this)
@@ -33,13 +33,21 @@ class MyApplication: Application() {
         DefaultBlockRepository(blockDataSource)
     }
     // Classifier API
-    private val classifierRetrofit: Retrofit = Retrofit.Builder()
-        .addConverterFactory(GsonConverterFactory.create())
-        .baseUrl(BuildConfig.CLASSIFIER_API_URL)
+    val logging = HttpLoggingInterceptor().apply {
+        level = HttpLoggingInterceptor.Level.BODY
+    }
+    val client = OkHttpClient.Builder()
+        .addInterceptor(logging)
         .build()
+    private val baseUrl = BuildConfig.CLASSIFIER_API_URL
 
+    private val retrofit: Retrofit = Retrofit.Builder()
+        .client(client)
+        .addConverterFactory(GsonConverterFactory.create())
+        .baseUrl(baseUrl)
+        .build()
     private val classifierRetrofitService: ClassifierApiService by lazy {
-        classifierRetrofit.create(ClassifierApiService::class.java)
+        retrofit.create(ClassifierApiService::class.java)
     }
 
     val networkClassifierApiRepository: NetworkClassifierApiRepository by lazy {
@@ -87,13 +95,4 @@ class MyApplication: Application() {
         QuarantineRepository(quarantineDataSource)
     }
 
-    val smsRepository by lazy {
-        DefaultSmsRepository(
-            defaultSmsProvider,
-            networkClassifierApiRepository,
-            networkExplainerApiRepository,
-            urlRepository,
-            quarantineRepository)
-
-    }
 }

@@ -1,10 +1,8 @@
 package com.example.smishingdetection.data.network.explainer
 
 import android.util.Log
-import com.example.smishingdetection.data.network.classifier.model.ClassifierApiResult
 import com.example.smishingdetection.data.network.explainer.model.ExplainerApiResult
 import com.example.smishingdetection.data.network.explainer.model.ExplainerRequest
-import com.example.smishingdetection.data.network.explainer.model.ExplainerResponse
 import com.example.smishingdetection.data.sanitizer.ExplainerApiSanitizer
 import retrofit2.HttpException
 
@@ -19,12 +17,12 @@ class NetworkExplainerApiRepository(
 ) : ExplainerApiRepository {
     override suspend fun explain(request: ExplainerRequest): ExplainerApiResult {
         try {
-            val santizedInput = explainerApiSanitizer.sanitize(request.input)
+            val santizedInput = explainerApiSanitizer.sanitize(request.text)
             val response = explainerApiService.explain(
                 ExplainerRequest(
                 santizedInput,
                 request.classification,
-                request.riskScore
+                request.risk_score
                 )
             )
             return ExplainerApiResult.Success(response)

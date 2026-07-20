@@ -1,124 +1,120 @@
 package com.example.smishingdetection.data.sms
 
-import com.example.smishingdetection.data.local.QuarantineRepository
-import com.example.smishingdetection.data.local.model.AnalyzedMessage
-import com.example.smishingdetection.data.network.classifier.NetworkClassifierApiRepository
-import com.example.smishingdetection.data.network.classifier.model.ClassifierApiResult
-import com.example.smishingdetection.data.network.classifier.model.ClassifierResponse
-import com.example.smishingdetection.data.network.explainer.NetworkExplainerApiRepository
-import com.example.smishingdetection.data.network.explainer.model.ExplainerApiResult
-import com.example.smishingdetection.data.network.explainer.model.ExplainerRequest
-import com.example.smishingdetection.data.network.url.NetworkUrlApiRepository
-import com.example.smishingdetection.data.network.url.model.UrlAnalyzerResponse
-import com.example.smishingdetection.data.network.url.model.UrlApiResult
-import com.example.smishingdetection.data.sanitizer.ClassifierApiSanitizer
+import android.content.Context
+import android.provider.Telephony
+import android.util.Log
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.descriptors.StructureKind
-import okhttp3.Dispatcher
 
-interface SmsRepository {
-    /*
-     * read newest sms message from content provider - update UI loading
-     * send message to classifier api - update UI for API status error
-     * send message to url sandbox - update UI for API status error
-     * send classifier output to LLM - update UI for API status error
-     * insert into db
-     * update UI - message info
-     */
-
-    suspend fun checkLatestSms(lastProcessedId: Long?): SmsMessage?
-    suspend fun classifyMessage(message: String): ClassifierApiResult
-    suspend fun explainMessage(input: ExplainerRequest): ExplainerApiResult
-    suspend fun getUrlVerdict(message: String): UrlApiResult?
-    suspend fun insertIntoDatabase(
-        sender: String,
-        date: String,
-        message: String,
-        riskScore: Float, // TODO: change to float, stay consistent with API
-        explanation: String,
-        urlVerdict: UrlAnalyzerResponse?
-    ): Long
-    suspend fun getMessageById(id: Long): AnalyzedMessage
+interface SmsRespository {
+    suspend fun getLatestSms(lastProcessedId: Long?): SmsMessage?
+    suspend fun getRecentSms(count: Int): List<SmsMessage>
+    suspend fun getNewSmsSince(lastTimestamp: Long): SmsMessage?
 }
 
-class DefaultSmsRepository(
-    private val smsProvider: DefaultSmsProvider,
-    private val classifierApiRepository: NetworkClassifierApiRepository,
-    private val explainerApiRepository: NetworkExplainerApiRepository,
-    private val urlApiRepository: NetworkUrlApiRepository,
-    private val quarantineRepository: QuarantineRepository,
+class DefaultSmsRespository(
+    private val context: Context,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-
-): SmsRepository {
-    override suspend fun checkLatestSms(lastProcessedId: Long?): SmsMessage? {
-        return smsProvider.getLatestSms(lastProcessedId)
-    }
-
-    override suspend fun classifyMessage(message: String): ClassifierApiResult =
+) : SmsRespository {
+    /*
+    * Get the most recent sms message
+     */
+    override suspend fun getLatestSms(lastProcessedId: Long?): SmsMessage? =
         withContext(ioDispatcher) {
-        val input: String? = message
-        // Handle successful and failed requests to classifier API
-        when (val result = classifierApiRepository.classify(input)) {
-            is ClassifierApiResult.Success -> {
-                val confidence = result.data.confidence
-                val label = result.data.label
-
-                // Calculate risk score and risk level - low, medium, high
-                val riskScore = if (label == "SPAM") confidence else (1 - confidence)
-                val riskLevel = when {
-                    riskScore > 0.75 -> "HIGH"
-                    riskScore >= 0.30 -> "MEDIUM"
-                    else -> "LOW"
-                }
-                return@withContext ClassifierApiResult.Success(
-                    ClassifierResponse(
-                        "SPAM",
-                        riskScore,
-                        riskLevel
+            val projection = arrayOf(
+                Telephony.Sms._ID,
+                Telephony.Sms.ADDRESS,
+                Telephony.Sms.BODY,
+                Telephony.Sms.DATE
+            )
+            context.contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                projection,
+                null,
+                null,
+                "${Telephony.Sms.DATE} DESC"
+            )?.use { cursor ->
+                Log.d("SMS", "cursor = $cursor")
+                if (cursor.moveToFirst() && cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID)) != lastProcessedId) {
+                    Log.d("Debug content provider", "returned row")
+                    return@withContext SmsMessage(
+                        id = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID)),
+                        address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)) ?: "Unknown",
+                        body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)),
+                        date = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE))
                     )
-                )
+                }
             }
-            is ClassifierApiResult.ApiError -> {
-                return@withContext result   // pass along error response
-            }
-            is ClassifierApiResult.ExceptionError -> {
-                return@withContext result
-            }
+            Log.d("Debug content provider", "last processed id $lastProcessedId")
+            return@withContext null
         }
-    }
 
-    override suspend fun explainMessage(request: ExplainerRequest): ExplainerApiResult {
-        return explainerApiRepository.explain(request)
-    }
+    /*
+    * Get the newest N sms messages
+     */
+    override suspend fun getRecentSms(count: Int): List<SmsMessage> =
+        withContext(ioDispatcher) {
+            val messages = mutableListOf<SmsMessage>()
+            val projection = arrayOf(
+                Telephony.Sms._ID,
+                Telephony.Sms.ADDRESS,
+                Telephony.Sms.BODY,
+                Telephony.Sms.DATE
+            )
+            context.contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                projection,
+                null,
+                null,
+                "${Telephony.Sms.DATE} DESC"
+            )?.use { cursor ->
+                while (cursor.moveToNext() && messages.size < count) {
+                    messages += SmsMessage(
+                        id = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID)),
+                        address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)),
+                        body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)),
+                        date = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE))
 
-    override suspend fun getUrlVerdict(message: String): UrlApiResult? {
-        return urlApiRepository.getVerdict(message)
-    }
+                    )
+                }
+            }
 
-    override suspend fun insertIntoDatabase(
-        sender: String,
-        date: String,
-        message: String,
-        riskScore: Float,
-        explanation: String,
-        urlVerdict: UrlAnalyzerResponse?
-    ): Long {
-        val rowId = quarantineRepository.insertMessage(
-            sender,
-            date,
-            message,
-            riskScore.toDouble(),
-            explanation,
-            urlVerdict
-        )
-        return rowId
-    }
+            return@withContext messages
+        }
 
-    override suspend fun getMessageById(id: Long): AnalyzedMessage {
-        return quarantineRepository.getMessageById(id)
-    }
+    /*
+    * Get a list of sms messages since timestamp of last processed message.
+     */
+    override suspend fun getNewSmsSince(lastTimestamp: Long): SmsMessage? =
+        withContext(ioDispatcher) {
+            val projection = arrayOf(
+                Telephony.Sms._ID,
+                Telephony.Sms.ADDRESS,
+                Telephony.Sms.BODY,
+                Telephony.Sms.DATE,
+                Telephony.Sms.TYPE
+            )
+
+            val selection = "${Telephony.Sms.DATE} > ?"
+            val args = arrayOf(lastTimestamp.toString())
+
+            context.contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                projection,
+                selection,
+                args,
+                "${Telephony.Sms.DATE} ASC"
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    return@use SmsMessage(
+                        id = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID)),
+                        address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)),
+                        body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)),
+                        date = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE))
+                    )
+                }
+            }
+            return@withContext null
+        }
 }

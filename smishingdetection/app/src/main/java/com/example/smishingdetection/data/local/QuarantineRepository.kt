@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
@@ -29,15 +30,14 @@ interface AnalyzedMessageRepository {
     suspend fun quarantineMessage(messageId: Long)
     suspend fun markAsSafe(messageId: Long)
     suspend fun countByStatus(status: String): Int
-    suspend fun getAllMessages(): List<AnalyzedMessage>
-    suspend fun getMessagesByStatus(status: String) : List<AnalyzedMessage>
+    suspend fun getAllMessages(): Flow<List<AnalyzedMessage>>
+    suspend fun getMessagesByStatus(status: String) : Flow<List<AnalyzedMessage>>
 }
 
 class QuarantineRepository(
     private val localDataSource: AnalyzedMessageDao,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ): AnalyzedMessageRepository {
-
     override suspend fun insertMessage(
         phoneNumber: String?,
         date: String,
@@ -61,9 +61,9 @@ class QuarantineRepository(
         // Format riskScore (double)
         val riskScorePercent = (riskScore*100)
 
-        // Format url API response TODO: change db to store each value from API response
+        // Format url API response
         val scanResult = if(urlVerdict == null) {
-            ""
+            "No scan result available."
         } else {
             "Scan result returned Malicious:${urlVerdict.malicious} for ${urlVerdict.url} submitted with an overall score of ${urlVerdict.score}"
         }
@@ -74,7 +74,7 @@ class QuarantineRepository(
             date = timestamp,
             message = message,
             riskScore = riskScorePercent,
-            explanation = explanation ?: "",
+            explanation = explanation ?:"No explanation available.",
             urlScanResult = scanResult
         )
         val messageId = localDataSource.insertMessage(message)
@@ -99,12 +99,12 @@ class QuarantineRepository(
         return localDataSource.countByStatus(status)
     }
 
-    override suspend fun getAllMessages(): List<AnalyzedMessage> {
-        return localDataSource.getAll()
+    override suspend fun getAllMessages(): Flow<List<AnalyzedMessage>> {
+        return flowOf(localDataSource.getAll())
 
     }
 
-    override suspend fun getMessagesByStatus(status: String): List<AnalyzedMessage> {
-        return localDataSource.getByStatus(status)
+    override suspend fun getMessagesByStatus(status: String): Flow<List<AnalyzedMessage>> {
+        return flowOf(localDataSource.getByStatus(status))
     }
 }

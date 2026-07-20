@@ -9,16 +9,21 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.smishingdetection.ui.quarantine.AppLifecycleTracker
 import com.example.smishingdetection.MyApplication
+import com.example.smishingdetection.data.local.BlockRepository
+import com.example.smishingdetection.data.local.QuarantineRepository
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
+import com.example.smishingdetection.data.network.classifier.NetworkClassifierApiRepository
 import com.example.smishingdetection.data.network.classifier.model.ClassifierApiResult
 import com.example.smishingdetection.data.network.classifier.model.ClassifierResponse
+import com.example.smishingdetection.data.network.explainer.NetworkExplainerApiRepository
 import com.example.smishingdetection.data.network.explainer.model.ExplainerApiResult
 import com.example.smishingdetection.data.network.explainer.model.ExplainerRequest
 import com.example.smishingdetection.data.network.explainer.model.ExplainerResponse
+import com.example.smishingdetection.data.network.url.NetworkUrlApiRepository
 import com.example.smishingdetection.data.network.url.model.UrlAnalyzerResponse
 import com.example.smishingdetection.data.network.url.model.UrlApiResult
+import com.example.smishingdetection.data.sms.DefaultSmsRespository
 import com.example.smishingdetection.data.sms.SmsMessage
-import com.example.smishingdetection.data.sms.SmsRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,7 +39,7 @@ sealed interface SmsUiState {
 }
 
 sealed interface ClassifierUiState {
-    data class Success(val result: ClassifierResponse): ClassifierUiState
+    data class Success(val result: ClassifierApiResult.Success): ClassifierUiState
     data class ApiError(val message: ClassifierApiResult.ApiError): ClassifierUiState
     data class Exception(val error: ClassifierApiResult.ExceptionError): ClassifierUiState
     object Idle: ClassifierUiState
@@ -57,8 +62,12 @@ sealed interface ScanUiState {
     object Loading: ScanUiState
 }
 
-class SmsViewModel (
-    private val smsRepository: SmsRepository,
+class MainViewModel (
+    private val quarantineRepository: QuarantineRepository,
+    private val smsRepository: DefaultSmsRespository,
+    private val networkClassifierApiRepository: NetworkClassifierApiRepository,
+    private val networkExplainerApiRepository: NetworkExplainerApiRepository,
+    private val networkUrlApiRepository: NetworkUrlApiRepository,
     private val savedStateHandle: SavedStateHandle
 ): ViewModel() {
     // Smishing alerts
@@ -195,7 +204,7 @@ class SmsViewModel (
     private fun checkLatestSms() {
         viewModelScope.launch {
             _smsUiState.value = SmsUiState.Loading
-            when(val newMessage = smsRepository.checkLatestSms(lastProcessedSmsId.value)) {
+            when(val newMessage = smsRepository.getLatestSms(lastProcessedSmsId.value)) {
                 null -> {
                     Log.d("MainActivity", "null id returned by content provider")
                     _smsUiState.value = SmsUiState.Idle
@@ -213,13 +222,12 @@ class SmsViewModel (
     private fun classify(message: String) {
         viewModelScope.launch {
             _classifierUiState.value = ClassifierUiState.Loading
-            val result = smsRepository.classifyMessage(message)
-
+            val result = networkClassifierApiRepository.classify(message)
             when(result) {
                 is ClassifierApiResult.Success -> {
-                    _classifierUiState.value = ClassifierUiState.Success(result.data)
+                    _classifierUiState.value = ClassifierUiState.Success(result)
                     setLabel(result.data.label)
-                    setRiskScore(result.data.confidence)
+                    setRiskScore(result.data.riskScore)
                 }
                 is ClassifierApiResult.ApiError -> {
                     _classifierUiState.value = ClassifierUiState.ApiError(result)
@@ -236,7 +244,7 @@ class SmsViewModel (
     private fun getExplanation(text: String, classification: String, riskScore: Float) {
         viewModelScope.launch {
             _explainerUiState.value = ExplainerUiState.Loading
-            val response = smsRepository.explainMessage(ExplainerRequest(text, classification, riskScore))
+            val response = networkExplainerApiRepository.explain(ExplainerRequest(text, classification, riskScore))
             when(response) {
                 is ExplainerApiResult.Success -> {
                     _explainerUiState.value = ExplainerUiState.Success(response.data)
@@ -257,8 +265,7 @@ class SmsViewModel (
     private fun scan(message: String) {
         viewModelScope.launch {
             _scanUiState.value = ScanUiState.Loading
-            val response = smsRepository.getUrlVerdict(message)
-            when(response) {
+            when(val response = networkUrlApiRepository.getVerdict(message)) {
                 is UrlApiResult.Success -> {
                     _scanUiState.value = ScanUiState.Success(response.data)
                     setScanResult(response.data)
@@ -276,9 +283,6 @@ class SmsViewModel (
                     Log.d("UrlAnalyzer", "Exception: ${response.exception}, ${response.message}")
                 }
 
-                else -> { // no urls found
-                    _scanUiState.value = ScanUiState.Idle
-                }
             }
         }
     }
@@ -304,7 +308,7 @@ class SmsViewModel (
 
             checkLatestSms() // get latest sms using database observer
             val message = smsBody.value
-            if(!message.isNullOrEmpty()) {
+            if(message.isNotEmpty()) {
                 // Use classifier API model and send urls to sandbox
                 classify(smsBody.value)
                 scan(smsBody.value)
@@ -318,17 +322,17 @@ class SmsViewModel (
                         riskScore
                     )
                     // Save to local database
-                    val rowId = smsRepository.insertIntoDatabase(
+                    val rowId = quarantineRepository.insertMessage(
                         smsAddress.value,
                         smsDate.value,
                         smsBody.value,
-                        riskScore,
+                        riskScore.toDouble(),
                         explanation.value,
                         scanResult.value
                     )
 
                     // TODO: Send user alert
-                    val analyzedMessage = smsRepository.getMessageById(rowId)
+                    val analyzedMessage = quarantineRepository.getMessageById(rowId)
 
                     if(AppLifecycleTracker.isAppInForeground) {
                         showDialog(analyzedMessage)
@@ -344,12 +348,34 @@ class SmsViewModel (
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val repository =
+                val quarantineRepository =
                     (this[ViewModelProvider
                         .AndroidViewModelFactory.Companion.APPLICATION_KEY] as MyApplication)
-                        .smsRepository
+                        .quarantineRepository
+                val networkClassifierApiRepository =
+                    (this[ViewModelProvider
+                        .AndroidViewModelFactory.Companion.APPLICATION_KEY] as MyApplication)
+                        .networkClassifierApiRepository
+                val networkExplainerApiRepository =
+                    (this[ViewModelProvider
+                        .AndroidViewModelFactory.Companion.APPLICATION_KEY] as MyApplication)
+                        .networkExplainerApiRepository
+                val networkUrlApiRepository =
+                    (this[ViewModelProvider
+                        .AndroidViewModelFactory.Companion.APPLICATION_KEY] as MyApplication)
+                        .urlRepository
+                val smsRepository =
+                    (this[ViewModelProvider
+                        .AndroidViewModelFactory.Companion.APPLICATION_KEY] as MyApplication)
+                        .defaultSmsRepository
                 val savedStateHandle = SavedStateHandle()
-                SmsViewModel(repository, savedStateHandle)
+                MainViewModel(
+                    quarantineRepository,
+                    smsRepository,
+                    networkClassifierApiRepository,
+                    networkExplainerApiRepository,
+                    networkUrlApiRepository,
+                    savedStateHandle)
             }
         }
     }

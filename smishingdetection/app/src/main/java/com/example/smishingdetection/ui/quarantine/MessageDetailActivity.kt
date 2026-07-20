@@ -21,8 +21,6 @@ import com.example.smishingdetection.R
 import kotlinx.coroutines.launch
 
 class MessageDetailActivity : AppCompatActivity() {
-    private var messageId: Long = -1
-    private var status: String = "caution"
     private var phoneNumber: String = ""
     private val viewModel: MessageDetailViewModel by viewModels {
         MessageDetailViewModel.Factory
@@ -51,6 +49,7 @@ class MessageDetailActivity : AppCompatActivity() {
         val btnBlock: Button = findViewById(R.id.btnBlock)
         val btnDelete: ImageButton = findViewById(R.id.btnDelete)
         val tvUrlScan: TextView = findViewById(R.id.tvUrlScan)
+        val messageId: Long = intent.getLongExtra("id", -1)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -61,13 +60,13 @@ class MessageDetailActivity : AppCompatActivity() {
                     tvPhone.text = state.analyzedMessage?.phoneNumber
                     tvMessage.text = state.analyzedMessage?.message
                     tvUrlScan.text =
-                        state.analyzedMessage?.urlScanResult?.ifBlank { "No scan result available." }
+                        state.analyzedMessage?.urlScanResult
 
                     val score = state.analyzedMessage?.riskScore
                     tvRiskScore.text = String.format("%.0f%%", score)
 
                     tvExplanation.text =
-                        state.analyzedMessage?.explanation?.ifBlank { "No explanation available." }
+                        state.analyzedMessage?.explanation
 
                     // Action button depends on status
                     val messageStatus = state.status
@@ -76,10 +75,10 @@ class MessageDetailActivity : AppCompatActivity() {
                     btnAction.setOnClickListener {
                         if (messageStatus == DetailViewStatus.CAUTION) {
                             // Move to quarantine — update status in DB (use db.updateStatus function created & also add the toast to notify the user of the changes)
-                            viewModel.quarantine()
+                            viewModel.quarantine(messageId)
                         } else {
                             // Mark as safe — delete from suspicious DB
-                            viewModel.deleteMessage()
+                            viewModel.deleteMessage(messageId)
                         }
                         finish()
                     }
@@ -126,7 +125,7 @@ class MessageDetailActivity : AppCompatActivity() {
                             .setTitle("Delete AnalyzedMessage")
                             .setMessage("Remove this message from the log?")
                             .setPositiveButton("Delete") { _, _ ->
-                                viewModel.deleteMessage()
+                                viewModel.deleteMessage(messageId)
                                 Toast.makeText(this, "AnalyzedMessage deleted", Toast.LENGTH_SHORT)
                                     .show()
                                 finish()

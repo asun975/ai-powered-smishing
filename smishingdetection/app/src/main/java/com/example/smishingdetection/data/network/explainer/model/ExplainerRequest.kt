@@ -1,7 +1,7 @@
 package com.example.smishingdetection.data.network.explainer.model
 
 data class ExplainerRequest(
-    val input: String,
+    val text: String,
     val classification: String,
-    val riskScore: Float
+    val risk_score: Float
 )

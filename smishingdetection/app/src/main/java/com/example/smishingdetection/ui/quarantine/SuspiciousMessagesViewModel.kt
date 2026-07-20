@@ -21,6 +21,7 @@ import com.example.smishingdetection.data.local.BlockRepository
 import com.example.smishingdetection.data.local.QuarantineRepository
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -38,7 +39,7 @@ import kotlinx.coroutines.withContext
 
 data class SuspiciousMessageUiState(
     val selectedTab: MessageTab = MessageTab.CAUTION,
-    val messages: List<AnalyzedMessage> = emptyList(),
+    val messages: Flow<List<AnalyzedMessage>> = flowOf(emptyList()),
     val isLoading: Boolean = false
 )
 
@@ -70,10 +71,10 @@ class SuspiciousMessagesViewModel(
             val currentTab = suspiciousMessageUiState.value.selectedTab
             if (currentTab == MessageTab.CAUTION) {
                 quarantineRepository.quarantineMessage(id)
-                _toastEvent.emit("AnalyzedMessage moved to quarantine!")
+                _toastEvent.emit("Message moved to quarantine!")
             } else {
                 quarantineRepository.markAsSafe(id)
-                _toastEvent.emit("AnalyzedMessage marked as safe")
+                _toastEvent.emit("Message marked as safe.")
             }
         }
     }

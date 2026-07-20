@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var smsTextView: TextView
     private lateinit var resultTextView: TextView
     private lateinit var explanationTextView: TextView
-    private val smsViewModel : SmsViewModel by viewModels { SmsViewModel.Factory }
+    private val smsViewModel : MainViewModel by viewModels { MainViewModel.Factory }
     private lateinit var smsContentObserver: SmsContentObserver
 
     private lateinit var notificationHelper: NotificationHelper
@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity() {
         notificationHelper.createNotificationChannel(applicationContext)
         lifecycleScope.launch {
             repeatOnLifecycle((Lifecycle.State.STARTED)) {
-                smsViewModel.processMessage()
+                launch{ smsViewModel.processMessage() }
                 launch {
                     smsViewModel.smsUiState.collect { uiState ->
                         renderSmsView(uiState)
@@ -95,7 +95,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // TODO
+
     }
     private fun requestPermissions() {
         val permissionsNeeded = mutableListOf<String>()
@@ -186,8 +186,8 @@ class MainActivity : AppCompatActivity() {
     private fun renderClassifierView(state: ClassifierUiState) {
         when(state) {
             is ClassifierUiState.Success -> {
-                val riskScorePercent = state.result.confidence
-                when(state.result.riskLevel) {
+                val riskScorePercent = state.result.data.riskScore
+                when(state.result.data.riskCategory) {
                     "HIGH" -> {
                         resultTextView.text = "⚠️ Detected High Risk of Smishing!\n\n${
                             String.format("%2.2f", riskScorePercent)}% Risk Score"

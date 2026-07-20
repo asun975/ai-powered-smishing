@@ -35,13 +35,11 @@ class MessageDetailViewModel(
 ) : ViewModel() {
     private val _messageDetailUiState = MutableStateFlow(DetailUiState())
     val messageDetailUiState = _messageDetailUiState.asStateFlow()
-    private val _rowId = MutableStateFlow(savedStateHandle.get<Long>("id") ?: -1)
-    val rowId = _rowId.asStateFlow()
 
     fun loadMessage(id: Long) {
         viewModelScope.launch {
 
-                if (id == null) {
+                if (id == (-1).toLong()) {
                     Log.d("Debug", "received null from intent/saved state!")
                 } else {
                 val message = quarantineRepository.getMessageById(id)
@@ -74,9 +72,9 @@ class MessageDetailViewModel(
 
         }
     }
-    fun quarantine() {
+    fun quarantine(id:Long) {
         viewModelScope.launch {
-            quarantineRepository.quarantineMessage(rowId.value)
+            quarantineRepository.quarantineMessage(id)
             _messageDetailUiState.update {
                 it.copy(
                     status = DetailViewStatus.QUARANTINE
@@ -86,9 +84,9 @@ class MessageDetailViewModel(
         //Toast.makeText(this, "AnalyzedMessage moved to quarantine!", Toast.LENGTH_SHORT).show()
     }
 
-    fun deleteMessage() {
+    fun deleteMessage(id: Long) {
         viewModelScope.launch {
-            quarantineRepository.markAsSafe(rowId.value)
+            quarantineRepository.markAsSafe(id)
             _messageDetailUiState.update {
                 it.copy(
                     isDeleted = true
