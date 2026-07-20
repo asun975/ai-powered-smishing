@@ -7,9 +7,7 @@ import com.example.smishingdetection.data.network.url.model.UrlAnalyzerResponse
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -17,7 +15,7 @@ import java.time.format.DateTimeFormatter
 /*
  * Interface to the data layer
  */
-interface AnalyzedMessageRepository {
+interface QuarantineRepository {
     suspend fun insertMessage(
         phoneNumber: String?,
         date: String,
@@ -34,10 +32,10 @@ interface AnalyzedMessageRepository {
     suspend fun getMessagesByStatus(status: String) : Flow<List<AnalyzedMessage>>
 }
 
-class QuarantineRepository(
+class DefaultQuarantineRepository(
     private val localDataSource: AnalyzedMessageDao,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-): AnalyzedMessageRepository {
+): QuarantineRepository {
     override suspend fun insertMessage(
         phoneNumber: String?,
         date: String,

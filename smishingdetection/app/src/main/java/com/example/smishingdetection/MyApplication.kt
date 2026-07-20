@@ -3,7 +3,7 @@ package com.example.smishingdetection
 import android.app.Application
 import android.content.Context
 import com.example.smishingdetection.data.local.DefaultBlockRepository
-import com.example.smishingdetection.data.local.QuarantineRepository
+import com.example.smishingdetection.data.local.DefaultQuarantineRepository
 import com.example.smishingdetection.data.local.database.SmishingDetectorDb
 import com.example.smishingdetection.data.network.classifier.ClassifierApiService
 import com.example.smishingdetection.data.network.classifier.NetworkClassifierApiRepository
@@ -91,8 +91,8 @@ class MyApplication: Application() {
         SmishingDetectorDb.Companion.getDatabase(this as Context)
             .analyzedMessageDao()
     }
-    val quarantineRepository by lazy {
-        QuarantineRepository(quarantineDataSource)
+    val defaultQuarantineRepository by lazy {
+        DefaultQuarantineRepository(quarantineDataSource)
     }
 
 }

@@ -9,12 +9,11 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.smishingdetection.ui.quarantine.AppLifecycleTracker
 import com.example.smishingdetection.MyApplication
-import com.example.smishingdetection.data.local.BlockRepository
+import com.example.smishingdetection.data.local.DefaultQuarantineRepository
 import com.example.smishingdetection.data.local.QuarantineRepository
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import com.example.smishingdetection.data.network.classifier.NetworkClassifierApiRepository
 import com.example.smishingdetection.data.network.classifier.model.ClassifierApiResult
-import com.example.smishingdetection.data.network.classifier.model.ClassifierResponse
 import com.example.smishingdetection.data.network.explainer.NetworkExplainerApiRepository
 import com.example.smishingdetection.data.network.explainer.model.ExplainerApiResult
 import com.example.smishingdetection.data.network.explainer.model.ExplainerRequest
@@ -63,7 +62,7 @@ sealed interface ScanUiState {
 }
 
 class MainViewModel (
-    private val quarantineRepository: QuarantineRepository,
+    private val defaultQuarantineRepository: QuarantineRepository,
     private val smsRepository: DefaultSmsRespository,
     private val networkClassifierApiRepository: NetworkClassifierApiRepository,
     private val networkExplainerApiRepository: NetworkExplainerApiRepository,
@@ -203,11 +202,9 @@ class MainViewModel (
 
     private fun checkLatestSms() {
         viewModelScope.launch {
-            _smsUiState.value = SmsUiState.Loading
             when(val newMessage = smsRepository.getLatestSms(lastProcessedSmsId.value)) {
                 null -> {
                     Log.d("MainActivity", "null id returned by content provider")
-                    _smsUiState.value = SmsUiState.Idle
                 }
                 is SmsMessage -> {
                     setSmsId(newMessage.id)
@@ -289,7 +286,6 @@ class MainViewModel (
 
     fun refresh() {
         // ui states
-        _smsUiState.value = SmsUiState.Idle
         _classifierUiState.value = ClassifierUiState.Idle
         _explainerUiState.value = ExplainerUiState.Idle
         _scanUiState.value = ScanUiState.Idle
@@ -301,7 +297,6 @@ class MainViewModel (
     fun processMessage() {
         viewModelScope.launch {
             // Debug ui states
-            _smsUiState.value = SmsUiState.Idle
             _classifierUiState.value = ClassifierUiState.Idle
             _explainerUiState.value = ExplainerUiState.Idle
             _scanUiState.value = ScanUiState.Idle
@@ -322,7 +317,7 @@ class MainViewModel (
                         riskScore
                     )
                     // Save to local database
-                    val rowId = quarantineRepository.insertMessage(
+                    val rowId = defaultQuarantineRepository.insertMessage(
                         smsAddress.value,
                         smsDate.value,
                         smsBody.value,
@@ -332,7 +327,7 @@ class MainViewModel (
                     )
 
                     // TODO: Send user alert
-                    val analyzedMessage = quarantineRepository.getMessageById(rowId)
+                    val analyzedMessage = defaultQuarantineRepository.getMessageById(rowId)
 
                     if(AppLifecycleTracker.isAppInForeground) {
                         showDialog(analyzedMessage)
@@ -351,7 +346,7 @@ class MainViewModel (
                 val quarantineRepository =
                     (this[ViewModelProvider
                         .AndroidViewModelFactory.Companion.APPLICATION_KEY] as MyApplication)
-                        .quarantineRepository
+                        .defaultQuarantineRepository
                 val networkClassifierApiRepository =
                     (this[ViewModelProvider
                         .AndroidViewModelFactory.Companion.APPLICATION_KEY] as MyApplication)

@@ -29,9 +29,8 @@ data class DetailUiState(
 )
 
 class MessageDetailViewModel(
-    private val quarantineRepository: QuarantineRepository,
-    private val blockRepository: BlockRepository,
-    private val savedStateHandle: SavedStateHandle
+    private val defaultQuarantineRepository: QuarantineRepository,
+    private val blockRepository: BlockRepository
 ) : ViewModel() {
     private val _messageDetailUiState = MutableStateFlow(DetailUiState())
     val messageDetailUiState = _messageDetailUiState.asStateFlow()
@@ -42,7 +41,7 @@ class MessageDetailViewModel(
                 if (id == (-1).toLong()) {
                     Log.d("Debug", "received null from intent/saved state!")
                 } else {
-                val message = quarantineRepository.getMessageById(id)
+                val message = defaultQuarantineRepository.getMessageById(id)
                 val getStatus = when (message.status) {
                     "HIGH" -> DetailViewStatus.QUARANTINE
                     else -> DetailViewStatus.CAUTION
@@ -74,7 +73,7 @@ class MessageDetailViewModel(
     }
     fun quarantine(id:Long) {
         viewModelScope.launch {
-            quarantineRepository.quarantineMessage(id)
+            defaultQuarantineRepository.quarantineMessage(id)
             _messageDetailUiState.update {
                 it.copy(
                     status = DetailViewStatus.QUARANTINE
@@ -86,7 +85,7 @@ class MessageDetailViewModel(
 
     fun deleteMessage(id: Long) {
         viewModelScope.launch {
-            quarantineRepository.markAsSafe(id)
+            defaultQuarantineRepository.markAsSafe(id)
             _messageDetailUiState.update {
                 it.copy(
                     isDeleted = true
@@ -119,9 +118,8 @@ class MessageDetailViewModel(
                     (this[ViewModelProvider
                         .AndroidViewModelFactory.Companion.APPLICATION_KEY] as MyApplication
                             )
-                        .quarantineRepository
-                val savedStateHandle = createSavedStateHandle()
-                MessageDetailViewModel(quarantineRepository, blockRepository, savedStateHandle)
+                        .defaultQuarantineRepository
+                MessageDetailViewModel(quarantineRepository, blockRepository)
             }
         }
     }
