@@ -1,10 +1,8 @@
 package com.example.smishingdetector
-
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-
 /**
  * Local SQLite database that stores every analyzed SMS message.
  *
@@ -26,13 +24,10 @@ import android.database.sqlite.SQLiteOpenHelper
  */
 class DatabaseHelper(context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
-
     companion object {
         const val DATABASE_NAME = "smishing_detector.db"
         const val DATABASE_VERSION = 1
-
         const val TABLE_NAME = "analyzed_messages"
-
         const val COL_ID = "id"
         const val COL_PHONE = "phone_number"
         const val COL_DATE = "date"
@@ -41,14 +36,12 @@ class DatabaseHelper(context: Context) :
         const val COL_PREDICTION = "prediction"
         const val COL_STATUS = "status"
         const val COL_EXPLANATION = "explanation"
-
         fun statusFromScore(riskScore: Double): String = when {
             riskScore >= 70.0 -> "quarantined"
             riskScore >= 35.0 -> "caution"
             else -> "safe"
         }
     }
-
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """
@@ -65,14 +58,11 @@ class DatabaseHelper(context: Context) :
             """.trimIndent()
         )
     }
-
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         db.execSQL("DROP TABLE IF EXISTS $TABLE_NAME")
         onCreate(db)
     }
-
     // ── Write ────────────────────────────────────────────────────────────────
-
     /**
      * Insert a new analyzed message. Returns the new row ID, or -1 on failure.
      */
@@ -96,9 +86,7 @@ class DatabaseHelper(context: Context) :
         }
         return writableDatabase.insert(TABLE_NAME, null, values)
     }
-
     // ── Read ─────────────────────────────────────────────────────────────────
-
     /**
      * Look up a previously analyzed message by its exact body text.
      * Returns a map of column→value, or null if not found (cache miss).
@@ -126,7 +114,6 @@ class DatabaseHelper(context: Context) :
             )
         }
     }
-
     /**
      * Get all messages with a given status ("safe" | "caution" | "quarantined"),
      * newest first.
@@ -159,7 +146,6 @@ class DatabaseHelper(context: Context) :
             results
         }
     }
-
     /**
      * Get all messages regardless of status, newest first.
      */
@@ -187,7 +173,6 @@ class DatabaseHelper(context: Context) :
             results
         }
     }
-
     /** Total count of messages by status — useful for your teammate's UI. */
     fun countByStatus(status: String): Int {
         val cursor = readableDatabase.rawQuery(
@@ -196,9 +181,7 @@ class DatabaseHelper(context: Context) :
         )
         return cursor.use { if (it.moveToFirst()) it.getInt(0) else 0 }
     }
-
     // ── Update ────────────────────────────────────────────────────────────────
-
     /**
      * Mark a quarantined or caution message as safe by its exact message body.
      * Updates both status → "safe" and prediction → "SAFE".
@@ -216,7 +199,6 @@ class DatabaseHelper(context: Context) :
             arrayOf(message)
         )
     }
-
     /**
      * Block a message by its exact message body. Sets status → "blocked".
      * Returns the number of rows updated (1 on success, 0 if not found).
@@ -232,7 +214,6 @@ class DatabaseHelper(context: Context) :
             arrayOf(message)
         )
     }
-
     /**
      * Update the status of a message by its row ID.
      * Useful for Rachna's detail screen where the row ID is known.

@@ -1,5 +1,4 @@
 package com.example.smishingdetector
-
 import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -25,15 +24,12 @@ import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
 class MainActivity : AppCompatActivity() {
-
     companion object {
         private const val TAG = "SmishingDetector"
         private const val SMS_PERMISSION_CODE = 111
         private const val API_URL = "http://10.0.2.2:8000/analyze"
     }
-
     private lateinit var smsTextView: TextView
     private lateinit var predictionBadge: TextView
     private lateinit var riskScoreView: TextView
@@ -44,14 +40,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var markSafeButton: Button
     private lateinit var blockButton: Button
     private lateinit var db: DatabaseHelper
-
     private var currentMessageBody = ""
     private var currentStatus = "safe"
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
         smsTextView      = findViewById(R.id.smsTextView)
         predictionBadge  = findViewById(R.id.predictionBadge)
         riskScoreView    = findViewById(R.id.riskScoreView)
@@ -61,9 +54,7 @@ class MainActivity : AppCompatActivity() {
         resultCard       = findViewById(R.id.resultCard)
         markSafeButton   = findViewById(R.id.markSafeButton)
         blockButton      = findViewById(R.id.blockButton)
-
         db = DatabaseHelper(this)
-
         markSafeButton.setOnClickListener {
             if (currentMessageBody.isNotEmpty()) {
                 db.markAsSafe(currentMessageBody)
@@ -77,7 +68,6 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Message marked as safe", Toast.LENGTH_SHORT).show()
             }
         }
-
         blockButton.setOnClickListener {
             if (currentMessageBody.isNotEmpty()) {
                 db.blockMessage(currentMessageBody)
@@ -93,7 +83,6 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Message blocked successfully", Toast.LENGTH_SHORT).show()
             }
         }
-
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -106,7 +95,6 @@ class MainActivity : AppCompatActivity() {
             registerSmsReceiver()
         }
     }
-
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -120,7 +108,6 @@ class MainActivity : AppCompatActivity() {
             registerSmsReceiver()
         }
     }
-
     private fun registerSmsReceiver() {
         val br = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
@@ -128,15 +115,12 @@ class MainActivity : AppCompatActivity() {
                 for (sms in messages) {
                     val sender = sms.displayOriginatingAddress ?: "Unknown"
                     val body   = sms.displayMessageBody ?: continue
-
                     currentMessageBody = body
                     smsTextView.text = "From: $sender\n\nMessage: $body"
-
                     resultCard.visibility      = View.GONE
                     markSafeButton.visibility  = View.GONE
                     blockButton.visibility     = View.GONE
                     loadingLayout.visibility   = View.VISIBLE
-
                     Thread {
                         val cached = db.findByMessage(body)
                         if (cached != null) {
@@ -151,9 +135,7 @@ class MainActivity : AppCompatActivity() {
         }
         registerReceiver(br, IntentFilter("android.provider.Telephony.SMS_RECEIVED"))
     }
-
     // ── API ───────────────────────────────────────────────────────────────────
-
     private fun callApi(message: String): JSONObject? {
         return try {
             val connection = URL(API_URL).openConnection() as HttpURLConnection
@@ -162,11 +144,9 @@ class MainActivity : AppCompatActivity() {
             connection.doOutput = true
             connection.connectTimeout = 15_000
             connection.readTimeout    = 15_000
-
             OutputStreamWriter(connection.outputStream).use {
                 it.write(JSONObject().put("message", message).toString())
             }
-
             if (connection.responseCode == HttpURLConnection.HTTP_OK)
                 JSONObject(connection.inputStream.bufferedReader().readText())
             else {
@@ -178,19 +158,14 @@ class MainActivity : AppCompatActivity() {
             null
         }
     }
-
     // ── Display ───────────────────────────────────────────────────────────────
-
     private fun showApiResult(sender: String, body: String, result: JSONObject?) {
         loadingLayout.visibility = View.GONE
-
         if (result == null) { showError(); return }
-
         val skipped     = result.getBoolean("skipped")
         val prediction  = if (skipped) "SAFE" else result.getString("prediction")
         val riskScore   = if (skipped) 0.0    else result.getDouble("risk_score")
         val explanation = result.getString("explanation")
-
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         try {
             db.insertMessage(
@@ -204,10 +179,8 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "DB insert failed: ${e.message}", e)
         }
-
         renderUI(prediction, riskScore, explanation, fromCache = false, status = DatabaseHelper.statusFromScore(riskScore))
     }
-
     private fun showCachedResult(cached: Map<String, String>) {
         loadingLayout.visibility = View.GONE
         val prediction  = cached[DatabaseHelper.COL_PREDICTION] ?: "SAFE"
@@ -216,7 +189,6 @@ class MainActivity : AppCompatActivity() {
         val status      = cached[DatabaseHelper.COL_STATUS] ?: DatabaseHelper.statusFromScore(riskScore)
         renderUI(prediction, riskScore, explanation, fromCache = true, status = status)
     }
-
     private fun renderUI(
         prediction: String,
         riskScore: Double,
@@ -225,7 +197,6 @@ class MainActivity : AppCompatActivity() {
         status: String,
     ) {
         currentStatus = status
-
         // Badge
         val badgeText = if (currentStatus == "blocked") "BLOCKED" else prediction
         predictionBadge.text = if (fromCache) "$badgeText  (cached)" else badgeText
@@ -237,7 +208,6 @@ class MainActivity : AppCompatActivity() {
                 else -> Color.parseColor("#388E3C")
             }
         )
-
         // Risk score text + progress bar
         val statusLabel = when (currentStatus) {
             "quarantined" -> "⛔ Quarantined"
@@ -247,7 +217,6 @@ class MainActivity : AppCompatActivity() {
         }
         riskScoreView.text = "Risk Score: ${"%.1f".format(riskScore)} / 100   $statusLabel"
         riskProgressBar.progress = riskScore.toInt()
-
         // Colour the progress bar based on risk
         val progressColor = when (currentStatus) {
             "quarantined" -> Color.parseColor("#D32F2F")
@@ -257,22 +226,17 @@ class MainActivity : AppCompatActivity() {
         }
         riskProgressBar.progressTintList =
             android.content.res.ColorStateList.valueOf(progressColor)
-
         // Explanation
         explanationView.text = explanation
-
         // Show result card
         resultCard.visibility = View.VISIBLE
-
         // Mark as Safe button only for non-safe, non-blocked messages
         markSafeButton.visibility =
             if (currentStatus != "safe" && currentStatus != "blocked") View.VISIBLE else View.GONE
-
         // Block button hidden once the message is already blocked
         blockButton.visibility =
             if (currentStatus != "blocked") View.VISIBLE else View.GONE
     }
-
     private fun showError() {
         predictionBadge.text = "ERROR"
         predictionBadge.setBackgroundColor(Color.GRAY)
