@@ -269,7 +269,7 @@ class MainViewModel (
                 _scanUiState.value = ScanUiState.Idle
 
             } catch (e: InvalidInputException) {
-                Log.d("UrlAnalyzer", "No URL(s) found.")
+                Log.d("UrlAnalyzer", "${e.message}")
                 _scanUiState.value = ScanUiState.Idle
 
             } catch(e: SocketTimeoutException) {
