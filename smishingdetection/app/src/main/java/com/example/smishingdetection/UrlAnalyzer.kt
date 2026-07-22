@@ -10,9 +10,8 @@ import java.net.SocketTimeoutException
 import java.net.URL
 import java.sql.Connection
 
-class UrlAnalyzer() {
-    private val BaseUrl = BuildConfig.SCAN_API_URL
-    private val analyzeUrl = BaseUrl.plus("/analyze")
+class UrlAnalyzer(private val baseUrl: String) {
+    private val analyzeUrl = baseUrl.plus("/analyze")
     suspend fun analyzeUrl(url: String?): String =
         withContext(Dispatchers.IO) {
             // TODO: reset url analyzer text view for new messages

@@ -54,11 +54,12 @@ class MainActivity : AppCompatActivity() {
 
         val apiUrl = BuildConfig.CLASSIFIER_API_URL
         val llmUrl = BuildConfig.LLM_API_URL
+        val urlSandboxUrl = BuildConfig.SCAN_API_URL
 
         classifier = SmishingClassifier(apiUrl)
         explainer = LlmExplainer(llmUrl)
         db = DatabaseHelper(this)
-        urlAnalyzer = UrlAnalyzer()
+        urlAnalyzer = UrlAnalyzer(urlSandboxUrl)
 
         resultTextView.text = "⏳ Setting up..."
 
