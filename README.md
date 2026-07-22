@@ -111,8 +111,9 @@ The `smishingdetection/` folder contains the Android Studio project source.
 
 ### Setup in Android Studio
 
-1. Import the project `ai-power-smishing/smishingdetection`
-2. Create app.properties in project root and add API endpoints for the classifier, LLM and URL APIs
+1. Clone this repository in Android Studio
+2. In Android Studio, go to File > Open and open the folder ai-powered-smishing/smishingdetection/
+3. Create app.properties in project root and add API endpoints for the classifier, LLM and URL APIs
 
 ```
 ## This file loads your custom API urls for the classifier model and LLM
