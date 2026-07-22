@@ -5,34 +5,15 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
-/**
- * Local SQLite database that stores every analyzed SMS message.
- *
- * Table: analyzed_messages
- * Columns:
- *   id              - auto-increment primary key
- *   phone_number    - sender address
- *   date            - ISO-8601 timestamp of when the message was received
- *   message         - original SMS body
- *   risk_score      - 0–100 combined score from the API
- *   prediction      - "SAFE", "SPAM"
- *   status          - "safe" | "caution" | "quarantined"
- *   explanation     - plain-English LLM explanation
- *   url_scan_result - returns the results of the url scan from urlscan.io
- *
- * Status rules:
- *   risk_score < 35          → safe
- *   35 ≤ risk_score < 70     → caution
- *   risk_score ≥ 70          → quarantined
- */
 class DatabaseHelper(context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
     companion object {
         const val DATABASE_NAME = "smishing_detector.db"
-        const val DATABASE_VERSION = 2
+        const val DATABASE_VERSION = 3   // was 2 — bumped for blocked_senders table
 
         const val TABLE_NAME = "analyzed_messages"
+        const val TABLE_BLOCKED_SENDERS = "blocked_senders"
 
         const val COL_ID = "id"
         const val COL_PHONE = "phone_number"
@@ -43,6 +24,7 @@ class DatabaseHelper(context: Context) :
         const val COL_STATUS = "status"
         const val COL_EXPLANATION = "explanation"
         const val COL_URL_SCAN = "url_scan_result"
+
         fun statusFromScore(riskScore: Double): String = when {
             riskScore >= 70.0 -> "quarantined"
             riskScore >= 35.0 -> "caution"
@@ -66,18 +48,49 @@ class DatabaseHelper(context: Context) :
             )
             """.trimIndent()
         )
+        db.execSQL(
+            """
+            CREATE TABLE $TABLE_BLOCKED_SENDERS (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                phone       TEXT    NOT NULL UNIQUE,
+                blocked_at  TEXT    NOT NULL
+            )
+            """.trimIndent()
+        )
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        // Rebuild analyzed_messages on any upgrade (existing behavior — this wipes message history)
         db.execSQL("DROP TABLE IF EXISTS $TABLE_NAME")
-        onCreate(db)
+        db.execSQL(
+            """
+        CREATE TABLE $TABLE_NAME (
+            $COL_ID         INTEGER PRIMARY KEY AUTOINCREMENT,
+            $COL_PHONE      TEXT    NOT NULL,
+            $COL_DATE       TEXT    NOT NULL,
+            $COL_MESSAGE    TEXT    NOT NULL,
+            $COL_RISK_SCORE REAL    NOT NULL DEFAULT 0,
+            $COL_PREDICTION TEXT    NOT NULL DEFAULT 'SAFE',
+            $COL_STATUS     TEXT    NOT NULL DEFAULT 'safe',
+            $COL_EXPLANATION TEXT   NOT NULL DEFAULT '',
+            $COL_URL_SCAN TEXT NOT NULL DEFAULT ''
+        )
+        """.trimIndent()
+        )
+        // Blocked senders table survives upgrades — only created if missing
+        db.execSQL(
+            """
+        CREATE TABLE IF NOT EXISTS $TABLE_BLOCKED_SENDERS (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            phone       TEXT    NOT NULL UNIQUE,
+            blocked_at  TEXT    NOT NULL
+        )
+        """.trimIndent()
+        )
     }
 
     // ── Write ────────────────────────────────────────────────────────────────
 
-    /**
-     * Insert a new analyzed message. Returns the new row ID, or -1 on failure.
-     */
     fun insertMessage(
         phoneNumber: String,
         date: String,
@@ -103,60 +116,43 @@ class DatabaseHelper(context: Context) :
 
     // ── Read ─────────────────────────────────────────────────────────────────
 
-    /**
-     * Look up a previously analyzed message by its exact body text.
-     * Returns a map of column→value, or null if not found (cache miss).
-     */
     fun findByMessage(message: String): Map<String, String>? {
         val cursor = readableDatabase.query(
-            TABLE_NAME,
-            null,
-            "$COL_MESSAGE = ?",
-            arrayOf(message),
-            null, null,
-            "$COL_DATE DESC",
-            "1"           // only the most recent matching row
+            TABLE_NAME, null, "$COL_MESSAGE = ?", arrayOf(message),
+            null, null, "$COL_DATE DESC", "1"
         )
         return cursor.use {
             if (!it.moveToFirst()) return null
             mapOf(
-                COL_PHONE       to it.getString(it.getColumnIndexOrThrow(COL_PHONE)),
-                COL_DATE        to it.getString(it.getColumnIndexOrThrow(COL_DATE)),
-                COL_MESSAGE     to it.getString(it.getColumnIndexOrThrow(COL_MESSAGE)),
-                COL_RISK_SCORE  to it.getDouble(it.getColumnIndexOrThrow(COL_RISK_SCORE)).toString(),
-                COL_PREDICTION  to it.getString(it.getColumnIndexOrThrow(COL_PREDICTION)),
-                COL_STATUS      to it.getString(it.getColumnIndexOrThrow(COL_STATUS)),
+                COL_PHONE to it.getString(it.getColumnIndexOrThrow(COL_PHONE)),
+                COL_DATE to it.getString(it.getColumnIndexOrThrow(COL_DATE)),
+                COL_MESSAGE to it.getString(it.getColumnIndexOrThrow(COL_MESSAGE)),
+                COL_RISK_SCORE to it.getDouble(it.getColumnIndexOrThrow(COL_RISK_SCORE)).toString(),
+                COL_PREDICTION to it.getString(it.getColumnIndexOrThrow(COL_PREDICTION)),
+                COL_STATUS to it.getString(it.getColumnIndexOrThrow(COL_STATUS)),
                 COL_EXPLANATION to it.getString(it.getColumnIndexOrThrow(COL_EXPLANATION)),
                 COL_URL_SCAN to it.getString(it.getColumnIndexOrThrow(COL_URL_SCAN)),
             )
         }
     }
 
-    /**
-     * Get all messages with a given status ("safe" | "caution" | "quarantined"),
-     * newest first.
-     */
     fun getByStatus(status: String): List<Map<String, String>> {
         val cursor = readableDatabase.query(
-            TABLE_NAME,
-            null,
-            "$COL_STATUS = ?",
-            arrayOf(status),
-            null, null,
-            "$COL_DATE DESC"
+            TABLE_NAME, null, "$COL_STATUS = ?", arrayOf(status),
+            null, null, "$COL_DATE DESC"
         )
         return cursor.use {
             val results = mutableListOf<Map<String, String>>()
             while (it.moveToNext()) {
                 results.add(
                     mapOf(
-                        COL_ID          to it.getLong(it.getColumnIndexOrThrow(COL_ID)).toString(),
-                        COL_PHONE       to it.getString(it.getColumnIndexOrThrow(COL_PHONE)),
-                        COL_DATE        to it.getString(it.getColumnIndexOrThrow(COL_DATE)),
-                        COL_MESSAGE     to it.getString(it.getColumnIndexOrThrow(COL_MESSAGE)),
-                        COL_RISK_SCORE  to it.getDouble(it.getColumnIndexOrThrow(COL_RISK_SCORE)).toString(),
-                        COL_PREDICTION  to it.getString(it.getColumnIndexOrThrow(COL_PREDICTION)),
-                        COL_STATUS      to it.getString(it.getColumnIndexOrThrow(COL_STATUS)),
+                        COL_ID to it.getLong(it.getColumnIndexOrThrow(COL_ID)).toString(),
+                        COL_PHONE to it.getString(it.getColumnIndexOrThrow(COL_PHONE)),
+                        COL_DATE to it.getString(it.getColumnIndexOrThrow(COL_DATE)),
+                        COL_MESSAGE to it.getString(it.getColumnIndexOrThrow(COL_MESSAGE)),
+                        COL_RISK_SCORE to it.getDouble(it.getColumnIndexOrThrow(COL_RISK_SCORE)).toString(),
+                        COL_PREDICTION to it.getString(it.getColumnIndexOrThrow(COL_PREDICTION)),
+                        COL_STATUS to it.getString(it.getColumnIndexOrThrow(COL_STATUS)),
                         COL_EXPLANATION to it.getString(it.getColumnIndexOrThrow(COL_EXPLANATION)),
                         COL_URL_SCAN to it.getString(it.getColumnIndexOrThrow(COL_URL_SCAN)),
                     )
@@ -166,26 +162,20 @@ class DatabaseHelper(context: Context) :
         }
     }
 
-    /**
-     * Get all messages regardless of status, newest first.
-     */
     fun getAllMessages(): List<Map<String, String>> {
-        val cursor = readableDatabase.query(
-            TABLE_NAME, null, null, null, null, null,
-            "$COL_DATE DESC"
-        )
+        val cursor = readableDatabase.query(TABLE_NAME, null, null, null, null, null, "$COL_DATE DESC")
         return cursor.use {
             val results = mutableListOf<Map<String, String>>()
             while (it.moveToNext()) {
                 results.add(
                     mapOf(
-                        COL_ID          to it.getLong(it.getColumnIndexOrThrow(COL_ID)).toString(),
-                        COL_PHONE       to it.getString(it.getColumnIndexOrThrow(COL_PHONE)),
-                        COL_DATE        to it.getString(it.getColumnIndexOrThrow(COL_DATE)),
-                        COL_MESSAGE     to it.getString(it.getColumnIndexOrThrow(COL_MESSAGE)),
-                        COL_RISK_SCORE  to it.getDouble(it.getColumnIndexOrThrow(COL_RISK_SCORE)).toString(),
-                        COL_PREDICTION  to it.getString(it.getColumnIndexOrThrow(COL_PREDICTION)),
-                        COL_STATUS      to it.getString(it.getColumnIndexOrThrow(COL_STATUS)),
+                        COL_ID to it.getLong(it.getColumnIndexOrThrow(COL_ID)).toString(),
+                        COL_PHONE to it.getString(it.getColumnIndexOrThrow(COL_PHONE)),
+                        COL_DATE to it.getString(it.getColumnIndexOrThrow(COL_DATE)),
+                        COL_MESSAGE to it.getString(it.getColumnIndexOrThrow(COL_MESSAGE)),
+                        COL_RISK_SCORE to it.getDouble(it.getColumnIndexOrThrow(COL_RISK_SCORE)).toString(),
+                        COL_PREDICTION to it.getString(it.getColumnIndexOrThrow(COL_PREDICTION)),
+                        COL_STATUS to it.getString(it.getColumnIndexOrThrow(COL_STATUS)),
                         COL_EXPLANATION to it.getString(it.getColumnIndexOrThrow(COL_EXPLANATION)),
                         COL_URL_SCAN to it.getString(it.getColumnIndexOrThrow(COL_URL_SCAN)),
                     )
@@ -195,25 +185,45 @@ class DatabaseHelper(context: Context) :
         }
     }
 
-    /** Total count of messages by status — useful for your teammate's UI. */
     fun countByStatus(status: String): Int {
         val cursor = readableDatabase.rawQuery(
-            "SELECT COUNT(*) FROM $TABLE_NAME WHERE $COL_STATUS = ?",
-            arrayOf(status)
+            "SELECT COUNT(*) FROM $TABLE_NAME WHERE $COL_STATUS = ?", arrayOf(status)
         )
         return cursor.use { if (it.moveToFirst()) it.getInt(0) else 0 }
     }
 
-    // ── Update / Delete ───────────────────────────────────────────────────────
+    // ── Update / Delete ──────────────────────────────────────────────────────
 
-    /** Update the status of a message (e.g. promote caution → quarantined). */
     fun updateStatus(id: Long, newStatus: String): Int {
         val values = ContentValues().apply { put(COL_STATUS, newStatus) }
         return writableDatabase.update(TABLE_NAME, values, "$COL_ID = ?", arrayOf(id.toString()))
     }
 
-    /** Delete a message by its row ID. */
     fun deleteMessage(id: Long): Int {
         return writableDatabase.delete(TABLE_NAME, "$COL_ID = ?", arrayOf(id.toString()))
+    }
+
+    // ── Blocked senders  ─────────────────────────────────────────────────────
+
+    /** Adds a phone number to the local blocked list. Safe to call more than once. */
+    fun blockSender(phoneNumber: String) {
+        val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+            .format(java.util.Date())
+        val values = ContentValues().apply {
+            put("phone", phoneNumber)
+            put("blocked_at", timestamp)
+        }
+        writableDatabase.insertWithOnConflict(
+            TABLE_BLOCKED_SENDERS, null, values, SQLiteDatabase.CONFLICT_IGNORE
+        )
+    }
+
+    /** Returns true if this number is on the app's local blocked list. */
+    fun isSenderBlocked(phoneNumber: String): Boolean {
+        val cursor = readableDatabase.query(
+            TABLE_BLOCKED_SENDERS, arrayOf("id"), "phone = ?", arrayOf(phoneNumber),
+            null, null, null, "1"
+        )
+        return cursor.use { it.moveToFirst() }
     }
 }

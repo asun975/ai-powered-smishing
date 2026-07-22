@@ -13,6 +13,8 @@ import androidx.appcompat.app.AppCompatActivity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.telecom.TelecomManager
+import androidx.core.view.WindowCompat
+import android.view.View
 
 class MessageDetailActivity : AppCompatActivity() {
 
@@ -22,8 +24,15 @@ class MessageDetailActivity : AppCompatActivity() {
     private var phoneNumber: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_message_detail)
+
+        supportActionBar?.hide()
+
+        findViewById<ImageButton>(R.id.btnBack).setOnClickListener {
+            finish()
+        }
 
         supportActionBar?.apply {
             title = "Message Detail"
@@ -49,6 +58,7 @@ class MessageDetailActivity : AppCompatActivity() {
         val tvExplanation: TextView = findViewById(R.id.tvExplanation)
         val btnAction: Button = findViewById(R.id.btnAction)
         val btnBlock: Button = findViewById(R.id.btnBlock)
+        val btnMarkSafe: Button = findViewById(R.id.btnMarkSafe)
         val btnDelete: ImageButton = findViewById(R.id.btnDelete)
         val tvUrlScan: TextView = findViewById(R.id.tvUrlScan)
 
@@ -63,13 +73,23 @@ class MessageDetailActivity : AppCompatActivity() {
         tvExplanation.text = explanation.ifBlank { "No explanation available." }
 
         // Action button label depends on status
-        btnAction.text = if (status == "caution") "Quarantine" else "Mark as Safe"
+        btnAction.text = "Quarantine"
+        btnAction.visibility = if (status == "caution") View.VISIBLE else View.GONE
 
         btnAction.setOnClickListener {
-            handleActionButton()
+            db.updateStatus(messageId, "quarantined")
+            Toast.makeText(this, "Message quarantined", Toast.LENGTH_SHORT).show()
+            finish()
+        }
+
+        btnMarkSafe.setOnClickListener {
+            db.deleteMessage(messageId)
+            Toast.makeText(this, "Message marked as safe", Toast.LENGTH_SHORT).show()
+            finish()
         }
 
         btnBlock.setOnClickListener {
+            db.blockSender(phoneNumber)
             blockNumber()
         }
 
@@ -78,18 +98,6 @@ class MessageDetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleActionButton() {
-        if (status == "caution") {
-            // Move to quarantine — update status in DB (use db.updateStatus function created & also add the toast to notify the user of the changes)
-            //TODO
-            Toast.makeText(this, "Coming soon", Toast.LENGTH_SHORT).show()
-        } else {
-            // Mark as safe — delete from suspicious DB
-            db.deleteMessage(messageId)
-            Toast.makeText(this, "Message marked as safe", Toast.LENGTH_SHORT).show()
-        }
-        finish()
-    }
 
     private fun blockNumber() {
         AlertDialog.Builder(this)

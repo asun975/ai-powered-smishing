@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.appcompat.app.AlertDialog
+import android.view.View
 
 class MainActivity : AppCompatActivity() {
     private lateinit var urlAnalyzer: UrlAnalyzer
@@ -40,6 +41,7 @@ class MainActivity : AppCompatActivity() {
     private var isProcessing = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        supportActionBar?.hide()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -189,6 +191,12 @@ class MainActivity : AppCompatActivity() {
             Log.d("MainActivity", "Already processing, skipping ($source)")
             return
         }
+
+        if (originalBody.isBlank()) {
+            Log.d("MainActivity", "Skipping blank/whitespace-only message from $sender ($source)")
+            return
+        }
+
         isProcessing = true
 
         Log.d("MainActivity", "---------- PROCESSING SMS ($source) ----------")
@@ -313,7 +321,14 @@ class MainActivity : AppCompatActivity() {
             // Then display it somewhere — add a TextView for it, or append to explanationTextView:
             runOnUiThread {
                 if (!scanResult.isNullOrBlank() && scanResult != "No Urls found") {
-                    urlAnalyzerTextView.text = "🔗 URL Scan: $scanResult"
+                    urlAnalyzerTextView.text = scanResult
+                    urlAnalyzerTextView.visibility = android.view.View.VISIBLE
+                    findViewById<View>(R.id.urlDivider).visibility = android.view.View.VISIBLE
+                    findViewById<TextView>(R.id.urlScanLabel).visibility = android.view.View.VISIBLE
+                } else {
+                    urlAnalyzerTextView.visibility = android.view.View.GONE
+                    findViewById<View>(R.id.urlDivider).visibility = android.view.View.GONE
+                    findViewById<TextView>(R.id.urlScanLabel).visibility = android.view.View.GONE
                 }
             }
             // Save to database for MEDIUM (caution) and HIGH (quarantined) risk
