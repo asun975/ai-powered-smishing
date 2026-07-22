@@ -9,18 +9,17 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.smishingdetection.ui.quarantine.AppLifecycleTracker
 import com.example.smishingdetection.MyApplication
-import com.example.smishingdetection.data.local.DefaultQuarantineRepository
 import com.example.smishingdetection.data.local.QuarantineRepository
 import com.example.smishingdetection.data.local.model.AnalyzedMessage
 import com.example.smishingdetection.data.network.classifier.NetworkClassifierApiRepository
-import com.example.smishingdetection.data.network.classifier.model.ClassifierApiResult
+import retrofit2.HttpException
+import com.example.smishingdetection.data.network.classifier.model.ClassifyResult
 import com.example.smishingdetection.data.network.explainer.NetworkExplainerApiRepository
-import com.example.smishingdetection.data.network.explainer.model.ExplainerApiResult
 import com.example.smishingdetection.data.network.explainer.model.ExplainerRequest
 import com.example.smishingdetection.data.network.explainer.model.ExplainerResponse
 import com.example.smishingdetection.data.network.url.NetworkUrlApiRepository
 import com.example.smishingdetection.data.network.url.model.UrlAnalyzerResponse
-import com.example.smishingdetection.data.network.url.model.UrlApiResult
+import com.example.smishingdetection.data.sanitizer.InvalidInputException
 import com.example.smishingdetection.data.sms.DefaultSmsRespository
 import com.example.smishingdetection.data.sms.SmsMessage
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -29,6 +28,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.net.ConnectException
+import java.net.SocketTimeoutException
 
 sealed interface SmsUiState {
     data class Success(val smsMessage: SmsMessage): SmsUiState
@@ -38,25 +39,22 @@ sealed interface SmsUiState {
 }
 
 sealed interface ClassifierUiState {
-    data class Success(val result: ClassifierApiResult.Success): ClassifierUiState
-    data class ApiError(val message: ClassifierApiResult.ApiError): ClassifierUiState
-    data class Exception(val error: ClassifierApiResult.ExceptionError): ClassifierUiState
+    data class Success(val result: ClassifyResult): ClassifierUiState
+    object Error: ClassifierUiState
     object Idle: ClassifierUiState
     object Loading: ClassifierUiState
 }
 
 sealed interface ExplainerUiState {
     data class Success(val explanation: ExplainerResponse): ExplainerUiState
-    data class ApiError(val error: ExplainerApiResult.ApiError): ExplainerUiState
-    data class Exception(val error: ExplainerApiResult.ExceptionError): ExplainerUiState
+    object Error: ExplainerUiState
     object Idle: ExplainerUiState
     object Loading: ExplainerUiState
 }
 
 sealed interface ScanUiState {
     data class Success(val scanResult: UrlAnalyzerResponse): ScanUiState
-    data class ApiError(val error: UrlApiResult.ApiError): ScanUiState
-    data class Exception(val exception: UrlApiResult.ExceptionError): ScanUiState
+    data class Error(val error: String): ScanUiState
     object Idle: ScanUiState
     object Loading: ScanUiState
 }
@@ -218,68 +216,78 @@ class MainViewModel (
 
     private fun classify(message: String) {
         viewModelScope.launch {
-            _classifierUiState.value = ClassifierUiState.Loading
-            val result = networkClassifierApiRepository.classify(message)
-            when(result) {
-                is ClassifierApiResult.Success -> {
-                    _classifierUiState.value = ClassifierUiState.Success(result)
-                    setLabel(result.data.label)
-                    setRiskScore(result.data.riskScore)
-                }
-                is ClassifierApiResult.ApiError -> {
-                    _classifierUiState.value = ClassifierUiState.ApiError(result)
-                    Log.d("SmishingClassifier", "API error: ${result.statusCode}, status code: ${result.statusCode}")
-                }
-                is ClassifierApiResult.ExceptionError -> {
-                    _classifierUiState.value = ClassifierUiState.Exception(result)
-                    Log.d("SmishingClassifier", "Exception e: ${result.exception}, ${result.message}")
-                }
+            try {
+                val response = networkClassifierApiRepository.classify(message)
+                _classifierUiState.value = ClassifierUiState.Success(response)
+            } catch (e: HttpException) {
+                val statusCode = e.code()
+                val errorBody = e.response()?.errorBody()?.string()
+                Log.d("SmishingClassifier", "${e.javaClass.simpleName} ${e.javaClass.fields}")
+                _classifierUiState.value = ClassifierUiState.Error
+            } catch(e: Exception) {
+                val exception = e.javaClass.simpleName.toString()
+                val message = e.message.toString()
+                Log.e("SmishingClassifier", "Exception: $exception - $message")
+                _classifierUiState.value = ClassifierUiState.Error
             }
         }
     }
 
     private fun getExplanation(text: String, classification: String, riskScore: Float) {
         viewModelScope.launch {
-            _explainerUiState.value = ExplainerUiState.Loading
-            val response = networkExplainerApiRepository.explain(ExplainerRequest(text, classification, riskScore))
-            when(response) {
-                is ExplainerApiResult.Success -> {
-                    _explainerUiState.value = ExplainerUiState.Success(response.data)
-                    setExplanation(response.data.explanation)
-                }
-                is ExplainerApiResult.ApiError -> {
-                    _explainerUiState.value = ExplainerUiState.ApiError(response)
-                    Log.d("Explainer", "API error: ${response.statusCode}, ${response.message}")
-                }
-                is ExplainerApiResult.ExceptionError -> {
-                    _explainerUiState.value = ExplainerUiState.Exception(response)
-                    Log.d("Explainer", "Exception: ${response.exeception}, ${response.message}")
-                }
+            try {
+                val response = networkExplainerApiRepository.explain(
+                    ExplainerRequest(
+                        text,
+                        classification,
+                        riskScore
+                    )
+                )
+                _explainerUiState.value = ExplainerUiState.Success(response)
+            } catch (e: HttpException) {
+                val statusCode = e.code()
+                val errorBody = e.response()?.errorBody() ?: e.message()
+                _explainerUiState.value = ExplainerUiState.Error
+            } catch (e: Exception) {
+                val exception = e.javaClass.simpleName.toString()
+                val message = e.message.toString()
+                Log.e("LlmExplainer", "Exception: $exception - $message")
+                _explainerUiState.value = ExplainerUiState.Error
             }
+
         }
     }
 
     private fun scan(message: String) {
         viewModelScope.launch {
-            _scanUiState.value = ScanUiState.Loading
-            when(val response = networkUrlApiRepository.getVerdict(message)) {
-                is UrlApiResult.Success -> {
-                    _scanUiState.value = ScanUiState.Success(response.data)
-                    setScanResult(response.data)
-                }
-                is UrlApiResult.ApiError -> {
-                    _scanUiState.value = ScanUiState.ApiError(response)
-                    Log.d("UrlAnalyzer", "API Error: ${response.statusCode}, ${response.message}")
-                }
-                is UrlApiResult.ValidationError -> {
-                    _scanUiState.value = ScanUiState.Idle
-                    Log.d("UrlAnalyzer", "$response.error")
-                }
-                is UrlApiResult.ExceptionError -> {
-                    _scanUiState.value = ScanUiState.Exception(response)
-                    Log.d("UrlAnalyzer", "Exception: ${response.exception}, ${response.message}")
-                }
+            try {
+                val response = networkUrlApiRepository.getVerdict(message)
+                _scanUiState.value = ScanUiState.Success(response)
 
+            } catch (e: NoSuchElementException) {
+                Log.d("UrlAnalyzer", "No URL(s) found.")
+                _scanUiState.value = ScanUiState.Idle
+
+            } catch (e: InvalidInputException) {
+                Log.d("UrlAnalyzer", "No URL(s) found.")
+                _scanUiState.value = ScanUiState.Idle
+
+            } catch(e: SocketTimeoutException) {
+                Log.e("UrlAnalyzer", "Exception: ${e.localizedMessage}")
+                _scanUiState.value = ScanUiState.Error("Scan timed out.")
+
+            } catch(e: ConnectException) {
+                Log.e("UrlAnalyzer", "Exception: ${e.printStackTrace()}.")
+                _scanUiState.value = ScanUiState.Error("Server is not available.")
+
+            } catch(e: Exception) {
+                Log.e("UrlAnalyzer", "Exception: ${e.javaClass.simpleName} - ${e.message}\nCause: ${e.cause}\nTrace: ${e.printStackTrace()}")
+                _scanUiState.value = ScanUiState.Error("Debug Mode: ${e.toString()}, ${e.message.toString()}")
+
+            } catch(e: HttpException) {
+                val statusCode = e.code()
+                Log.d("UrlAnalyzer", "HTTP $statusCode: ${e.response()?.message() ?: e.message()}")
+                _scanUiState.value = ScanUiState.Error("${e.message()}")
             }
         }
     }
