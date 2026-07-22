@@ -11,20 +11,33 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.tabs.TabLayout
+import android.widget.ImageButton
+import androidx.core.view.WindowCompat
+import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.telecom.TelecomManager
 
 class SuspiciousMessagesActivity : AppCompatActivity() {
 
     private lateinit var db: DatabaseHelper
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: MessageAdapter
-    private lateinit var emptyView: TextView
+    private lateinit var emptyView: View
     private lateinit var tabLayout: TabLayout
 
     private var currentTab = "caution"  // "caution" or "quarantined"
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        supportActionBar?.hide()
         super.onCreate(savedInstanceState)
+
         setContentView(R.layout.activity_suspicious_messages)
+
+        findViewById<ImageButton>(R.id.btnBack).setOnClickListener {
+            finish()
+        }
 
         supportActionBar?.apply {
             title = "AI Smishing"
@@ -73,8 +86,6 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
         if (messages.isEmpty()) {
             recyclerView.visibility = View.GONE
             emptyView.visibility = View.VISIBLE
-            emptyView.text = if (currentTab == "caution")
-                "No caution messages" else "No quarantined messages"
         } else {
             recyclerView.visibility = View.VISIBLE
             emptyView.visibility = View.GONE
@@ -99,26 +110,55 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
     private fun showPopupMenu(msg: Map<String, String>, anchor: View) {
         val popup = PopupMenu(this, anchor)
         popup.menu.add(0, 1, 0, "Detail")
-        popup.menu.add(0, 2, 1, if (currentTab == "caution") "Quarantine" else "Mark Safe")
+        if (currentTab == "caution") {
+            popup.menu.add(0, 2, 1, "Quarantine")
+        } else {
+            popup.menu.add(0, 4, 3, "Block")
+        }
+        popup.menu.add(0, 3, 2, "Mark Safe")
 
         popup.setOnMenuItemClickListener { item: MenuItem ->
+            val id = msg[DatabaseHelper.COL_ID]?.toLongOrNull() ?: -1
             when (item.itemId) {
                 1 -> openDetail(msg)
                 2 -> {
-                    val id = msg[DatabaseHelper.COL_ID]?.toLongOrNull() ?: -1
-                    if (currentTab == "caution") {
-                        //TODO (again for the other move to quarantine button)
-                        Toast.makeText(this, "Coming soon", Toast.LENGTH_SHORT).show()
-                    } else {
-                        db.deleteMessage(id)
-                        Toast.makeText(this, "Message marked as safe", Toast.LENGTH_SHORT).show()
-                    }
+                    db.updateStatus(id, "quarantined")
+                    Toast.makeText(this, "Message quarantined", Toast.LENGTH_SHORT).show()
                     loadMessages()
+                }
+
+                3 -> {
+                    db.deleteMessage(id)
+                    Toast.makeText(this, "Message marked as safe", Toast.LENGTH_SHORT).show()
+                    loadMessages()
+                }
+
+                4 -> {
+                    val phone = msg[DatabaseHelper.COL_PHONE] ?: ""
+                    db.blockSender(phone)
+                    blockNumber(phone)
                 }
             }
             true
         }
         popup.show()
+    }
+
+    private fun blockNumber(phoneNumber: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Block Number")
+            .setMessage("$phoneNumber will be copied to your clipboard. You can paste it into the block list that opens.")
+            .setPositiveButton("Open Block List") { _, _ ->
+                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("phone number", phoneNumber)
+                clipboard.setPrimaryClip(clip)
+
+                val telecomManager = getSystemService(TELECOM_SERVICE) as TelecomManager
+                val blockIntent = telecomManager.createManageBlockedNumbersIntent()
+                startActivity(blockIntent)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
