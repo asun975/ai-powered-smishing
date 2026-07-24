@@ -29,6 +29,19 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String",
+            "CLASSIFIER_API_URL",
+            "\"${appProperties.getProperty("CLASSIFIER_API_URL")?.removeSurrounding("\"") ?: ""}\""
+        )
+        buildConfigField("String",
+            "LLM_API_URL",
+            "\"${appProperties.getProperty("LLM_API_URL")?.removeSurrounding("\"") ?: ""}\""
+        )
+        buildConfigField("String",
+            "SCAN_API_URL",
+            "\"${appProperties.getProperty("SCAN_API_URL")?.removeSurrounding("\"") ?: ""}\""
+        )
     }
 
     buildTypes {
@@ -40,18 +53,6 @@ android {
             )
         }
         debug {
-            buildConfigField("String",
-                "CLASSIFIER_API_URL",
-                appProperties.getProperty("CLASSIFIER_API_URL")
-            )
-            buildConfigField("String",
-                "LLM_API_URL",
-                appProperties.getProperty("LLM_API_URL")
-            )
-            buildConfigField("String",
-                "SCAN_API_URL",
-                appProperties.getProperty("SCAN_API_URL")
-            )
         }
     }
     compileOptions {
@@ -71,6 +72,7 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation(libs.androidx.work.runtime.ktx)
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
