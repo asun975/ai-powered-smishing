@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity() {
     private var smsObserver: ContentObserver? = null
     private var lastProcessedSmsId: String? = null
     private var isProcessing = false
+    private lateinit var sanitizer: Preprocessing.Companion
 
     override fun onCreate(savedInstanceState: Bundle?) {
         supportActionBar?.hide()
@@ -60,6 +61,7 @@ class MainActivity : AppCompatActivity() {
         explainer = LlmExplainer(llmUrl)
         db = DatabaseHelper(this)
         urlAnalyzer = UrlAnalyzer(urlSandboxUrl)
+        sanitizer = Preprocessing
 
         resultTextView.text = "⏳ Setting up..."
 
@@ -126,8 +128,7 @@ class MainActivity : AppCompatActivity() {
                     for (sms in messages) {
                         val body = sms.displayMessageBody
                         val sender = sms.displayOriginatingAddress ?: "Unknown"
-                        val (classifierInput, llmInput, urls) = preprocessSmsMessage(body)
-                        processSmsMessage(sender, body, classifierInput, llmInput, "BROADCAST", urls)
+                        processSmsMessage(sender, body, "BROADCAST", sanitizer)
                     }
                 }
             }
@@ -161,8 +162,7 @@ class MainActivity : AppCompatActivity() {
 
                     if (smsId != null && smsId != lastProcessedSmsId) {
                         lastProcessedSmsId = smsId
-                        val (classifierInput, llmInput, urls) = preprocessSmsMessage(body)
-                        processSmsMessage(sender, body, classifierInput, llmInput, "DATABASE", urls)
+                        processSmsMessage(sender, body, "DATABASE", sanitizer)
                     }
                 }
             }
@@ -171,29 +171,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun preprocessSmsMessage(body: String): Triple<String, String, List<String?>> {
-        val preprocessor = Preprocessing
-        return Triple(
-            preprocessor.preprocessClassifierText(body),
-            preprocessor.preprocessLlmText(body),
-            preprocessor.extractUrl(body)
-        )
-    }
-
     private fun processSmsMessage(
         sender: String,
-        originalBody: String,
-        classifierInput: String,
-        llmInput: String,
+        body: String,
         source: String,
-        urls: List<String?>
+        sanitizer: Preprocessing.Companion
     ) {
+        val messageUrl: String? = sanitizer.extractFirstUrl(body)
+        val classifierInput = sanitizer.preprocessClassifierText(body)
+        val llmInput = sanitizer.preprocessLlmText(body)
+
         if (isProcessing) {
             Log.d("MainActivity", "Already processing, skipping ($source)")
             return
         }
 
-        if (originalBody.isBlank()) {
+        if (body.isBlank()) {
             Log.d("MainActivity", "Skipping blank/whitespace-only message from $sender ($source)")
             return
         }
@@ -209,7 +202,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            classifyMessage(sender, originalBody, classifierInput, llmInput, urls.firstOrNull())
+            classifyMessage(sender, body, classifierInput, llmInput, messageUrl)
             isProcessing = false
         }
     }
@@ -316,12 +309,11 @@ class MainActivity : AppCompatActivity() {
                     explanationTextView.setTextColor(getColor(android.R.color.holo_red_light))
                 }
             }
-            // After getting the explanation, call the URL analyzer:
-            val scanResult = urlAnalyzer.analyzeUrl(url)
 
-            // Then display it somewhere — add a TextView for it, or append to explanationTextView:
+            // Call URL sandbox and display result in Main Screen UI
+            val scanResult = urlAnalyzer.analyzeUrl(url)
             runOnUiThread {
-                if (!scanResult.isNullOrBlank() && scanResult != "No Urls found") {
+                if (scanResult != "No Urls found") {
                     urlAnalyzerTextView.text = scanResult
                     urlAnalyzerTextView.visibility = android.view.View.VISIBLE
                     findViewById<View>(R.id.urlDivider).visibility = android.view.View.VISIBLE
@@ -348,7 +340,7 @@ class MainActivity : AppCompatActivity() {
                     riskScore = riskScorePercent.toDouble(),
                     prediction = prediction,
                     explanation = explanation,
-                    urlScanResult = scanResult ?: ""
+                    urlScanResult = scanResult
                 )
                 val status = DatabaseHelper.statusFromScore(riskScorePercent.toDouble())
                 Log.d("MainActivity", "Saved message to DB: $riskCategory")

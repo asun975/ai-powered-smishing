@@ -31,7 +31,7 @@ class UrlAnalyzer(private val baseUrl: String) {
                         put("url", url)
                     }.toString()
 
-                    Log.d("UrlAnalyzer", "Request: $jsonInputString")
+                    Log.d("UrlAnalyzer",  "Request: $jsonInputString")
 
                     urlConnection.outputStream.use { os ->
                         val input = jsonInputString.toByteArray(Charsets.UTF_8)
