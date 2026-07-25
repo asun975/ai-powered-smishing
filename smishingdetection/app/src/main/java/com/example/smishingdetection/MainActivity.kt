@@ -311,21 +311,34 @@ class MainActivity : AppCompatActivity() {
             }
 
             // Call URL sandbox and display result in Main Screen UI
-            val scanResult = urlAnalyzer.analyzeUrl(url)
+            val (scanStatus, scanResult) = urlAnalyzer.analyzeUrl(url)
+
             runOnUiThread {
-                if (scanResult != "No Urls found") {
-                    urlAnalyzerTextView.text = scanResult
-                    urlAnalyzerTextView.visibility = android.view.View.VISIBLE
-                    findViewById<View>(R.id.urlDivider).visibility = android.view.View.VISIBLE
-                    findViewById<TextView>(R.id.urlScanLabel).visibility = android.view.View.VISIBLE
+                // Hide UI if no URLs are found in message
+                if (scanStatus == ScanStatus.SKIPPED) {
+                    // Debug code
+                    Log.d("MainActivity", scanResult)
+                    urlAnalyzerTextView.visibility = View.GONE
+                    findViewById<View>(R.id.urlDivider).visibility = View.GONE
+                    findViewById<TextView>(R.id.urlScanLabel).visibility = View.GONE
                 } else {
-                    urlAnalyzerTextView.visibility = android.view.View.GONE
-                    findViewById<View>(R.id.urlDivider).visibility = android.view.View.GONE
-                    findViewById<TextView>(R.id.urlScanLabel).visibility = android.view.View.GONE
+                    // Display scan result or error message to user
+                    urlAnalyzerTextView.text = scanResult
+                    urlAnalyzerTextView.visibility = View.VISIBLE
+                    findViewById<View>(R.id.urlDivider).visibility = View.VISIBLE
+                    findViewById<TextView>(R.id.urlScanLabel).visibility = View.VISIBLE
                 }
             }
             // Save to database for MEDIUM (caution) and HIGH (quarantined) risk
             if (riskCategory == "MEDIUM" || riskCategory == "HIGH") {
+                // Format url scan result
+                val urlScanResult =
+                    if(scanStatus == ScanStatus.SUCCESS) {
+                        scanResult
+                    } else {
+                        "No scan result available."
+                    }
+                // Format date
                 val timestamp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
                 } else {
@@ -340,7 +353,7 @@ class MainActivity : AppCompatActivity() {
                     riskScore = riskScorePercent.toDouble(),
                     prediction = prediction,
                     explanation = explanation,
-                    urlScanResult = scanResult
+                    urlScanResult = urlScanResult
                 )
                 val status = DatabaseHelper.statusFromScore(riskScorePercent.toDouble())
                 Log.d("MainActivity", "Saved message to DB: $riskCategory")
@@ -353,7 +366,7 @@ class MainActivity : AppCompatActivity() {
                             riskScorePercent = riskScorePercent,
                             riskCategory = riskCategory,
                             explanation = explanation,
-                            scanResult = scanResult ?: "",
+                            scanResult = urlScanResult,
                             messageId = newMessageId,
                             status = status,
                             timestamp = timestamp
@@ -369,7 +382,7 @@ class MainActivity : AppCompatActivity() {
                         messageId = newMessageId,
                         originalBody = originalBody,
                         timestamp = timestamp,
-                        scanResult = scanResult ?: "",
+                        scanResult = urlScanResult,
                         status = status
                     )
                 }
@@ -386,10 +399,14 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         smsReceiver?.let {
-            try { unregisterReceiver(it) } catch (e: Exception) { }
+            try { unregisterReceiver(it) } catch (e: Exception) {
+                Log.d("MainActivity", "Failed to unregister Broadcast Receiver: ${e.message}")
+            }
         }
         smsObserver?.let {
-            try { contentResolver.unregisterContentObserver(it) } catch (e: Exception) { }
+            try { contentResolver.unregisterContentObserver(it) } catch (e: Exception) {
+                Log.d("MainActivity", "Failed to unregister SMS Observer: ${e.message}")
+            }
         }
     }
 }
