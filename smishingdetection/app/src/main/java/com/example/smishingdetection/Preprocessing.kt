@@ -50,12 +50,12 @@ class Preprocessing {
         // Removes PII
         // text preprocessing remove emoji unicode characters, punctuation and extra whitespace
         fun preprocessClassifierText(text: String): String {
-            val textInput = removeSensitiveData(text).lowercase()
+            return removeSensitiveData(text).lowercase()
+                .replace(Regex("""[^a-z0-9\s]"""), "")
                 .replace(emoji, "")
                 .replace(punctuation, " ") // prevent words from joining
                 .replace(whitespaces, " ") // remove extra whitespaces
                 .trim()
-            return textInput
         }
 
         // Replace PII in SMS text with placeholder to keep context
