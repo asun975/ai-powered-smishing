@@ -25,6 +25,13 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.appcompat.app.AlertDialog
 import android.view.View
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
     private lateinit var urlAnalyzer: UrlAnalyzer
@@ -38,7 +45,11 @@ class MainActivity : AppCompatActivity() {
     private var smsReceiver: BroadcastReceiver? = null
     private var smsObserver: ContentObserver? = null
     private var lastProcessedSmsId: String? = null
+    private var lastProcessedMessageHash: Int? = null
     private var isProcessing = false
+
+    private var currentSender: String? = null
+    private var currentMessageBody: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         supportActionBar?.hide()
@@ -68,6 +79,94 @@ class MainActivity : AppCompatActivity() {
         }
 
         requestPermissions()
+        scheduleAnalysisWorker() // Check for any pending messages on startup
+        observeWorkerStatus()
+    }
+
+    private fun observeWorkerStatus() {
+        WorkManager.getInstance(applicationContext)
+            .getWorkInfosForUniqueWorkLiveData("SmishingAnalysis")
+            .observe(this) { workInfos ->
+                val workInfo = workInfos?.firstOrNull()
+                if (workInfo?.state?.isFinished == true) {
+                    Log.d("MainActivity", "WorkManager finished: ${workInfo.state}")
+                    refreshLastMessageUI()
+                }
+            }
+    }
+
+    private fun refreshLastMessageUI() {
+        val sender = currentSender ?: return
+        val body = currentMessageBody ?: return
+
+        lifecycleScope.launch {
+            // Check if this message has been analyzed in the DB
+            val analyzed = db.findByMessage(body)
+            if (analyzed != null) {
+                val status = analyzed[DatabaseHelper.COL_STATUS]
+                if (status != DatabaseHelper.STATUS_PENDING) {
+                    Log.d("MainActivity", "Refreshing UI with analyzed data for: $sender")
+                    updateUIWithAnalyzedMessage(analyzed)
+                }
+            }
+        }
+    }
+
+    private fun updateUIWithAnalyzedMessage(msg: Map<String, String>) {
+        val riskScore = msg[DatabaseHelper.COL_RISK_SCORE]?.toDoubleOrNull() ?: 0.0
+        val riskCategory = when {
+            riskScore > 75.0 -> "HIGH"
+            riskScore >= 30.0 -> "MEDIUM"
+            else -> "LOW"
+        }
+        val explanation = msg[DatabaseHelper.COL_EXPLANATION] ?: ""
+        val scanResult = msg[DatabaseHelper.COL_URL_SCAN] ?: ""
+
+        runOnUiThread {
+            when (riskCategory) {
+                "HIGH" -> {
+                    resultTextView.text = "⚠️ Detected High Risk of Smishing!\n\n${
+                        String.format("%.2f", riskScore)}% Risk Score"
+                    resultTextView.setTextColor(getColor(android.R.color.holo_red_light))
+                }
+                "MEDIUM" -> {
+                    resultTextView.text = "⚠️ Signs of Smishing Detected\n\n${
+                        String.format("%.2f", riskScore)}% Risk Score"
+                    resultTextView.setTextColor(getColor(android.R.color.holo_orange_dark))
+                }
+                "LOW" -> {
+                    resultTextView.text = "✅ Low Risk of Smishing\n\n${
+                        String.format("%.2f", riskScore)}% Risk Score"
+                    resultTextView.setTextColor(getColor(android.R.color.holo_green_dark))
+                }
+            }
+            explanationTextView.text = if (explanation.isNotEmpty()) "💬 $explanation" else ""
+            explanationTextView.setTextColor(if (riskCategory == "LOW") getColor(android.R.color.darker_gray) else getColor(android.R.color.holo_red_light))
+
+            if (scanResult.isNotEmpty() && scanResult != "No Urls found") {
+                urlAnalyzerTextView.text = scanResult
+                urlAnalyzerTextView.visibility = View.VISIBLE
+                findViewById<View>(R.id.urlDivider).visibility = View.VISIBLE
+                findViewById<TextView>(R.id.urlScanLabel).visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun scheduleAnalysisWorker() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val request = OneTimeWorkRequestBuilder<SmishingAnalysisWorker>()
+            .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 1, TimeUnit.MINUTES)
+            .build()
+
+        WorkManager.getInstance(applicationContext).enqueueUniqueWork(
+            "SmishingAnalysis",
+            ExistingWorkPolicy.REPLACE, // Change to REPLACE to trigger it again if new pending arrived
+            request
+        )
     }
 
     private fun requestPermissions() {
@@ -187,6 +286,14 @@ class MainActivity : AppCompatActivity() {
         source: String,
         urls: List<String?>
     ) {
+        // Simple hash-based deduplication
+        val msgHash = (sender + originalBody).hashCode()
+        if (msgHash == lastProcessedMessageHash) {
+            Log.d("MainActivity", "Duplicate message detected, skipping ($source)")
+            return
+        }
+        lastProcessedMessageHash = msgHash
+
         if (isProcessing) {
             Log.d("MainActivity", "Already processing, skipping ($source)")
             return
@@ -198,6 +305,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         isProcessing = true
+        currentSender = sender
+        currentMessageBody = originalBody
 
         Log.d("MainActivity", "---------- PROCESSING SMS ($source) ----------")
         Log.d("MainActivity", "From: $sender")
@@ -205,6 +314,11 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread {
             smsTextView.text = "From: $sender\n\nMessage: $llmInput"
             resultTextView.text = "🔍 Analyzing..."
+            explanationTextView.text = ""
+            urlAnalyzerTextView.text = ""
+            urlAnalyzerTextView.visibility = View.GONE
+            findViewById<View>(R.id.urlDivider).visibility = View.GONE
+            findViewById<TextView>(R.id.urlScanLabel).visibility = View.GONE
         }
 
         lifecycleScope.launch {
@@ -268,15 +382,27 @@ class MainActivity : AppCompatActivity() {
     ) {
         try {
             val (label, confidence) = classifier.classify(classifierInput)
-            val (riskScore, riskCategory) = getRiskScore(label, confidence)
 
             if (label == "ERROR") {
+                val timestamp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                } else {
+                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+                        .format(java.util.Date())
+                }
+                db.insertPendingMessage(sender, timestamp, originalBody)
+                scheduleAnalysisWorker()
+
                 runOnUiThread {
-                    resultTextView.text = "❌ Error analyzing\nCheck internet"
+                    resultTextView.text = "⏳ Offline: Analysis Queued"
                     resultTextView.setTextColor(getColor(android.R.color.darker_gray))
+                    explanationTextView.text = "Analysis will resume when internet is available."
+                    explanationTextView.setTextColor(getColor(android.R.color.darker_gray))
                 }
                 return
             }
+
+            val (riskScore, riskCategory) = getRiskScore(label, confidence)
 
             val riskScorePercent = riskScore * 100
 
@@ -347,7 +473,7 @@ class MainActivity : AppCompatActivity() {
                     riskScore = riskScorePercent.toDouble(),
                     prediction = prediction,
                     explanation = explanation,
-                    urlScanResult = scanResult ?: ""
+                    urlScanResult = scanResult
                 )
                 val status = DatabaseHelper.statusFromScore(riskScorePercent.toDouble())
                 Log.d("MainActivity", "Saved message to DB: $riskCategory")
@@ -360,7 +486,7 @@ class MainActivity : AppCompatActivity() {
                             riskScorePercent = riskScorePercent,
                             riskCategory = riskCategory,
                             explanation = explanation,
-                            scanResult = scanResult ?: "",
+                            scanResult = scanResult,
                             messageId = newMessageId,
                             status = status,
                             timestamp = timestamp
@@ -376,7 +502,7 @@ class MainActivity : AppCompatActivity() {
                         messageId = newMessageId,
                         originalBody = originalBody,
                         timestamp = timestamp,
-                        scanResult = scanResult ?: "",
+                        scanResult = scanResult,
                         status = status
                     )
                 }

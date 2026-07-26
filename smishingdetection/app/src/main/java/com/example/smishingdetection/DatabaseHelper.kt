@@ -25,10 +25,15 @@ class DatabaseHelper(context: Context) :
         const val COL_EXPLANATION = "explanation"
         const val COL_URL_SCAN = "url_scan_result"
 
+        const val STATUS_PENDING = "pending"
+        const val STATUS_QUARANTINED = "quarantined"
+        const val STATUS_CAUTION = "caution"
+        const val STATUS_SAFE = "safe"
+
         fun statusFromScore(riskScore: Double): String = when {
-            riskScore >= 70.0 -> "quarantined"
-            riskScore >= 35.0 -> "caution"
-            else -> "safe"
+            riskScore >= 70.0 -> STATUS_QUARANTINED
+            riskScore >= 35.0 -> STATUS_CAUTION
+            else -> STATUS_SAFE
         }
     }
 
@@ -110,6 +115,24 @@ class DatabaseHelper(context: Context) :
             put(COL_STATUS, status)
             put(COL_EXPLANATION, explanation)
             put(COL_URL_SCAN, urlScanResult)
+        }
+        return writableDatabase.insert(TABLE_NAME, null, values)
+    }
+
+    fun insertPendingMessage(
+        phoneNumber: String,
+        date: String,
+        message: String
+    ): Long {
+        val values = ContentValues().apply {
+            put(COL_PHONE, phoneNumber)
+            put(COL_DATE, date)
+            put(COL_MESSAGE, message)
+            put(COL_RISK_SCORE, 0.0)
+            put(COL_PREDICTION, "PENDING")
+            put(COL_STATUS, STATUS_PENDING)
+            put(COL_EXPLANATION, "Analysis queued...")
+            put(COL_URL_SCAN, "")
         }
         return writableDatabase.insert(TABLE_NAME, null, values)
     }
@@ -196,6 +219,24 @@ class DatabaseHelper(context: Context) :
 
     fun updateStatus(id: Long, newStatus: String): Int {
         val values = ContentValues().apply { put(COL_STATUS, newStatus) }
+        return writableDatabase.update(TABLE_NAME, values, "$COL_ID = ?", arrayOf(id.toString()))
+    }
+
+    fun updateAnalyzedMessage(
+        id: Long,
+        riskScore: Double,
+        prediction: String,
+        explanation: String,
+        urlScanResult: String
+    ): Int {
+        val status = statusFromScore(riskScore)
+        val values = ContentValues().apply {
+            put(COL_RISK_SCORE, riskScore)
+            put(COL_PREDICTION, prediction)
+            put(COL_STATUS, status)
+            put(COL_EXPLANATION, explanation)
+            put(COL_URL_SCAN, urlScanResult)
+        }
         return writableDatabase.update(TABLE_NAME, values, "$COL_ID = ?", arrayOf(id.toString()))
     }
 

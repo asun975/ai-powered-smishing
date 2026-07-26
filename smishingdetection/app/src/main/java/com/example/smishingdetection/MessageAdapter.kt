@@ -43,13 +43,19 @@ class MessageAdapter(
 
         // Risk score + badge color
         val score = msg[DatabaseHelper.COL_RISK_SCORE]?.toDoubleOrNull() ?: 0.0
-        holder.riskScore.text = String.format("%.0f%%", score)
+        val status = msg[DatabaseHelper.COL_STATUS] ?: DatabaseHelper.STATUS_CAUTION
 
-        val status = msg[DatabaseHelper.COL_STATUS] ?: "caution"
+        if (status == DatabaseHelper.STATUS_PENDING) {
+            holder.riskScore.text = "..."
+        } else {
+            holder.riskScore.text = String.format("%.0f%%", score)
+        }
+
         val badgeColor = when (status) {
-            "quarantined" -> Color.parseColor("#E53935") // red
-            "caution"     -> Color.parseColor("#FB8C00") // orange
-            else          -> Color.parseColor("#43A047") // green
+            DatabaseHelper.STATUS_QUARANTINED -> Color.parseColor("#E53935") // red
+            DatabaseHelper.STATUS_CAUTION -> Color.parseColor("#FB8C00") // orange
+            DatabaseHelper.STATUS_PENDING -> Color.parseColor("#757575") // gray
+            else -> Color.parseColor("#43A047") // green
         }
 
         val drawable = androidx.core.content.ContextCompat.getDrawable(
