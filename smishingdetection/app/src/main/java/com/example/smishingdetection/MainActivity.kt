@@ -293,7 +293,7 @@ class MainActivity : AppCompatActivity() {
         Log.d("MainActivity", "From: $sender")
 
         runOnUiThread {
-            smsTextView.text = "From: $sender\n\nMessage: $llmInput"
+            smsTextView.text = "From: $sender\n\nMessage: $originalBody"
             resultTextView.text = "🔍 Analyzing..."
             explanationTextView.text = ""
             urlAnalyzerTextView.text = ""
