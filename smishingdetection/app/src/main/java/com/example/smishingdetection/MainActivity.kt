@@ -42,7 +42,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var classifier: SmishingClassifier
     private lateinit var explainer: LlmExplainer
     private lateinit var db: DatabaseHelper
-    private var smsReceiver: BroadcastReceiver? = null
     private var smsObserver: ContentObserver? = null
     private var lastProcessedSmsId: String? = null
     private var lastProcessedMessageHash: Int? = null
@@ -210,27 +209,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startBothDetectionMethods() {
-        Log.d("MainActivity", "========== STARTING DUAL DETECTION ==========")
+        Log.d("MainActivity", "========== STARTING DETECTION ==========")
         resultTextView.text = "✅ Ready! Waiting for SMS..."
-        startBroadcastReceiver()
         startDatabaseObserver()
-    }
-
-    private fun startBroadcastReceiver() {
-        smsReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent?.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
-                    val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
-                    for (sms in messages) {
-                        val body = sms.displayMessageBody
-                        val sender = sms.displayOriginatingAddress ?: "Unknown"
-                        val (classifierInput, llmInput, urls) = preprocessSmsMessage(body)
-                        processSmsMessage(sender, body, classifierInput, llmInput, "BROADCAST", urls)
-                    }
-                }
-            }
-        }
-        registerReceiver(smsReceiver, IntentFilter(Telephony.Sms.Intents.SMS_RECEIVED_ACTION))
     }
 
     private fun startDatabaseObserver() {
@@ -518,9 +499,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        smsReceiver?.let {
-            try { unregisterReceiver(it) } catch (e: Exception) { }
-        }
         smsObserver?.let {
             try { contentResolver.unregisterContentObserver(it) } catch (e: Exception) { }
         }
