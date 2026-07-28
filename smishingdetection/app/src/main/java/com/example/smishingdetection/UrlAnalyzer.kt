@@ -22,7 +22,7 @@ class UrlAnalyzer(private val baseUrl: String) {
         withContext(Dispatchers.IO) {
             try {
                 if(url.isNullOrBlank()) {
-                    return@withContext Pair(ScanStatus.SKIPPED,"No Urls found")
+                    return@withContext Pair(ScanStatus.SKIPPED,"No URL detected.")
                 }
                 Log.d("UrlAnalyzer", "Submitting scan for: $url")
 
