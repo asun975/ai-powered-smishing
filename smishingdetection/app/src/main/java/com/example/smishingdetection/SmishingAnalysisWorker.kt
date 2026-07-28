@@ -64,14 +64,18 @@ class SmishingAnalysisWorker(
                 }
 
                 val (scanStatus, scanResult) = urlAnalyzer.analyzeUrl(firstUrl)
-                val scanResultString = "$scanStatus: $scanResult"
+
                 val prediction = if (label == "SPAM") "SPAM" else "SAFE"
                 db.updateAnalyzedMessage(
                     id = id,
                     riskScore = riskScorePercent.toDouble(),
                     prediction = prediction,
                     explanation = explanation,
-                    urlScanResult = scanResultString
+                    urlScanResult = if(scanStatus == ScanStatus.SUCCESS) {
+                        scanResult
+                    } else {
+                        "No scan result available."
+                    }
                 )
 
                 val status = DatabaseHelper.statusFromScore(riskScorePercent.toDouble())
@@ -87,7 +91,7 @@ class SmishingAnalysisWorker(
                         messageId = id,
                         originalBody = body,
                         timestamp = timestamp,
-                        scanResult = scanResultString,
+                        scanResult = Pair(scanStatus, scanResult),
                         status = status
                     )
                 }

@@ -519,7 +519,7 @@ class MainActivity : AppCompatActivity() {
                         messageId = newMessageId,
                         originalBody = originalBody,
                         timestamp = timestamp,
-                        scanResult = urlScanResult,
+                        scanResult = Pair(scanStatus, scanResult),
                         status = status
                     )
                 }
