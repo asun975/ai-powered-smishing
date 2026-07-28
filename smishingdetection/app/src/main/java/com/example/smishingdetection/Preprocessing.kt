@@ -28,7 +28,7 @@ class Preprocessing {
         )
 
         private val emoji = Regex(
-            """[\uD83C-\uDBFF\uDC00-\uDFFF]"""
+            """[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{1F1E6}-\x{1F1FF}]"""
         )
         private val bankAccount = Regex("""\s[0-9]{9,18}\s""")
         private val mfaCode = Regex("""[0-9]{6}""") // 6-digit MFA
@@ -63,7 +63,7 @@ class Preprocessing {
             return text
                 .replace(email, "[EMAIL]")
                 .replace(url, "[URL]")
-                .replace(creditCard, "[CARD")
+                .replace(creditCard, "[CARD]")
                 .replace(sin, "[ID]")
                 .replace(ssn, "[ID]")
                 .replace(phone, "[PHONE]")

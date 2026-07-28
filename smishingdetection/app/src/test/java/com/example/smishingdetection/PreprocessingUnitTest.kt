@@ -27,7 +27,8 @@ class PreprocessingUnitTest(
                 arrayOf("Your package from Canada Post could not be delivered. Update your delivery address now: http://canadapost-redelivery.com/track", "your package from canada post could not be delivered update your delivery address now"),
                 arrayOf("Happy Birthday! Hope you have an amazing day! ❤\uFE0F❤\uFE0F❤\uFE0F", "happy birthday hope you have an amazing day"),
                 arrayOf("\tYour Instacart order is ready for pickup at Costco. Show this code at the desk: #8847", "your instacart order is ready for pickup at costco show this code at the desk 8847"),
-                arrayOf("영어가 아닌 문자 메시지\u0456\u0121,\u043e ǥthis", "this")
+                arrayOf("영어가 아닌 문자 메시지\u0456\u0121,\u043e ǥthis", "this"),
+                arrayOf("Great job! \uD83C\uDF89 Keep it up.", "great job keep it up"),
             )
         }
     }

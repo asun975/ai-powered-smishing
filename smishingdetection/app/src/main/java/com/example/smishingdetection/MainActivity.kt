@@ -25,34 +25,54 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.appcompat.app.AlertDialog
 import android.view.View
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import java.util.concurrent.TimeUnit
 
+/**
+ * The app's home screen. Runs in the foreground (or background, via
+ * onDestroy-safe listeners) watching for new SMS messages, and pipes each
+ * one through: preprocessing -> classifier API -> (if risky) LLM explainer
+ * API -> URL scan -> local database -> on-screen result / notification.
+ */
 class MainActivity : AppCompatActivity() {
-    private lateinit var urlAnalyzer: UrlAnalyzer
-    private lateinit var urlAnalyzerTextView: TextView
-    private lateinit var smsTextView: TextView
-    private lateinit var resultTextView: TextView
-    private lateinit var explanationTextView: TextView
-    private lateinit var classifier: SmishingClassifier
-    private lateinit var explainer: LlmExplainer
-    private lateinit var db: DatabaseHelper
-    private var smsReceiver: BroadcastReceiver? = null
-    private var smsObserver: ContentObserver? = null
-    private var lastProcessedSmsId: String? = null
-    private var isProcessing = false
+    private lateinit var urlAnalyzer: UrlAnalyzer   //talks to the URL API
+    private lateinit var urlAnalyzerTextView: TextView  //shows URL scan result, if a URL was found
+    private lateinit var smsTextView: TextView  //shows the "From:... Message:... (original uncleaned text)"
+    private lateinit var resultTextView: TextView   //shows the risk score from DistilBERT (Low/Medium/High %)
+    private lateinit var explanationTextView: TextView  //shows the returned LLM explanation
+    private lateinit var classifier: SmishingClassifier //talks to the DistilBERT API
+    private lateinit var explainer: LlmExplainer    //talks to the LLM Groq API
+    private lateinit var db: DatabaseHelper //the local DB storage
+    private var smsObserver: ContentObserver? = null //watches for SMS content changes
+    private var lastProcessedSmsId: String? = null  //tracks if the last SMS was already processed
+    private var lastProcessedMessageHash: Int? = null   //like lastProcessedSmsId but if the content is the same
+    private var isProcessing = false    //so that if 2 messages arrive, only one goes at a time
     private lateinit var sanitizer: Preprocessing.Companion
 
+    //Remembers the most recently analyzed message so refreshLastMessageUI() can look it back up in the DB when the WorkManager
+    //finishes the offline retry
+    private var currentSender: String? = null
+    private var currentMessageBody: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        supportActionBar?.hide()
+        supportActionBar?.hide()    //hides the default title bar at the top which caused issues on different phones
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_main)  //refers to showing the activity_main.xml
 
         Log.d("MainActivity", "========== APP STARTED ===========")
 
+        //Set up the UI
         smsTextView = findViewById(R.id.smsTextView)
         resultTextView = findViewById(R.id.resultTextView)
         explanationTextView = findViewById(R.id.explanationTextView)
         urlAnalyzerTextView = findViewById(R.id.urlAnalyzerTextView)
 
+        //Set up API endpoints from BuildConfig (set per gradle config)
         val apiUrl = BuildConfig.CLASSIFIER_API_URL
         val llmUrl = BuildConfig.LLM_API_URL
         val urlSandboxUrl = BuildConfig.SCAN_API_URL
@@ -65,14 +85,119 @@ class MainActivity : AppCompatActivity() {
 
         resultTextView.text = "⏳ Setting up..."
 
-        // FAB opens the suspicious messages inbox
+        // Tapping the floating action button (mailbox) opens the "suspicious messages" inbox screen
         findViewById<FloatingActionButton>(R.id.fabInbox).setOnClickListener {
             startActivity(Intent(this, SuspiciousMessagesActivity::class.java))
         }
 
-        requestPermissions()
+        requestPermissions()    //starts startBothDetectionMethods() once the permission to read/write are given
+        scheduleAnalysisWorker() // Check for any pending messages on startup
+        observeWorkerStatus()   //listens to the background worker to finish
     }
 
+    /**
+     * Watches WorkManager for the offline-analysis worker (see classifyMessage's
+     * "ERROR" branch) finishing, and refreshes the screen once it has.
+     */
+    private fun observeWorkerStatus() {
+        WorkManager.getInstance(applicationContext)
+            .getWorkInfosForUniqueWorkLiveData("SmishingAnalysis")
+            .observe(this) { workInfos ->
+                val workInfo = workInfos?.firstOrNull()
+                if (workInfo?.state?.isFinished == true) {
+                    Log.d("MainActivity", "WorkManager finished: ${workInfo.state}")
+                    refreshLastMessageUI()
+                }
+            }
+    }
+
+    /**
+     * After a background retry finishes, re-check the DB for the message we were
+     * last showing on screen — if it's now been analyzed (no longer PENDING),
+     * update the UI with the real result instead of the "queued" placeholder.
+     */
+    private fun refreshLastMessageUI() {
+        val sender = currentSender ?: return
+        val body = currentMessageBody ?: return
+
+        lifecycleScope.launch {
+            // Check if this message has been analyzed in the DB
+            val analyzed = db.findByMessage(body)
+            if (analyzed != null) {
+                val status = analyzed[DatabaseHelper.COL_STATUS]
+                if (status != DatabaseHelper.STATUS_PENDING) {
+                    Log.d("MainActivity", "Refreshing UI with analyzed data for: $sender")
+                    updateUIWithAnalyzedMessage(analyzed)
+                }
+            }
+        }
+    }
+
+    /** Renders a DB row (already-analyzed message) onto the risk/explanation/URL views. */
+    private fun updateUIWithAnalyzedMessage(msg: Map<String, String>) {
+        val riskScore = msg[DatabaseHelper.COL_RISK_SCORE]?.toDoubleOrNull() ?: 0.0
+        val riskCategory = when {
+            riskScore > 75.0 -> "HIGH"
+            riskScore >= 30.0 -> "MEDIUM"
+            else -> "LOW"
+        }
+        val explanation = msg[DatabaseHelper.COL_EXPLANATION] ?: ""
+        val scanResult = msg[DatabaseHelper.COL_URL_SCAN] ?: ""
+
+        runOnUiThread {
+            when (riskCategory) {
+                "HIGH" -> {
+                    resultTextView.text = "⚠️ Detected High Risk of Smishing!\n\n${
+                        String.format("%.2f", riskScore)}% Risk Score"
+                    resultTextView.setTextColor(getColor(android.R.color.holo_red_light))
+                }
+                "MEDIUM" -> {
+                    resultTextView.text = "⚠️ Signs of Smishing Detected\n\n${
+                        String.format("%.2f", riskScore)}% Risk Score"
+                    resultTextView.setTextColor(getColor(android.R.color.holo_orange_dark))
+                }
+                "LOW" -> {
+                    resultTextView.text = "✅ Low Risk of Smishing\n\n${
+                        String.format("%.2f", riskScore)}% Risk Score"
+                    resultTextView.setTextColor(getColor(android.R.color.holo_green_dark))
+                }
+            }
+            explanationTextView.text = if (explanation.isNotEmpty()) "💬 $explanation" else ""
+            explanationTextView.setTextColor(if (riskCategory == "LOW") getColor(android.R.color.darker_gray) else getColor(android.R.color.holo_red_light))
+
+            if (scanResult.isNotEmpty() && scanResult != "No Urls found") {
+                urlAnalyzerTextView.text = scanResult
+                urlAnalyzerTextView.visibility = View.VISIBLE
+                findViewById<View>(R.id.urlDivider).visibility = View.VISIBLE
+                findViewById<TextView>(R.id.urlScanLabel).visibility = View.VISIBLE
+            }
+        }
+    }
+
+    /**
+     * Enqueues (or re-enqueues) the background worker that retries classification
+     * for any message stuck in "PENDING" status — used when the classifier API
+     * was unreachable at the time a message first arrived (see the offline-mode work).
+     * Requires network connectivity to actually run (see Constraints below).
+     */
+    private fun scheduleAnalysisWorker() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val request = OneTimeWorkRequestBuilder<SmishingAnalysisWorker>()
+            .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 1, TimeUnit.MINUTES)
+            .build()
+
+        WorkManager.getInstance(applicationContext).enqueueUniqueWork(
+            "SmishingAnalysis",
+            ExistingWorkPolicy.REPLACE, // Change to REPLACE to trigger it again if new pending arrived
+            request
+        )
+    }
+
+    /** Asks for SMS + (on Android 13+) notification permissions, if not already granted. */
     private fun requestPermissions() {
         val permissionsNeeded = mutableListOf<String>()
 
@@ -94,10 +219,12 @@ class MainActivity : AppCompatActivity() {
         if (permissionsNeeded.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissionsNeeded.toTypedArray(), 999)
         } else {
+            // Already have everything we need — start watching for SMS right away
             startBothDetectionMethods()
         }
     }
 
+    /** Callback for the permission request above (request code 999). */
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -114,26 +241,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startBothDetectionMethods() {
-        Log.d("MainActivity", "========== STARTING DUAL DETECTION ==========")
+        Log.d("MainActivity", "========== STARTING DETECTION ==========")
         resultTextView.text = "✅ Ready! Waiting for SMS..."
-        startBroadcastReceiver()
         startDatabaseObserver()
-    }
-
-    private fun startBroadcastReceiver() {
-        smsReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent?.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
-                    val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
-                    for (sms in messages) {
-                        val body = sms.displayMessageBody
-                        val sender = sms.displayOriginatingAddress ?: "Unknown"
-                        processSmsMessage(sender, body, "BROADCAST", sanitizer)
-                    }
-                }
-            }
-        }
-        registerReceiver(smsReceiver, IntentFilter(Telephony.Sms.Intents.SMS_RECEIVED_ACTION))
     }
 
     private fun startDatabaseObserver() {
@@ -181,6 +291,14 @@ class MainActivity : AppCompatActivity() {
         val classifierInput = sanitizer.preprocessClassifierText(body)
         val llmInput = sanitizer.preprocessLlmText(body)
 
+        // Simple hash-based deduplication
+        val msgHash = (sender + body).hashCode()
+        if (msgHash == lastProcessedMessageHash) {
+            Log.d("MainActivity", "Duplicate message detected, skipping ($source)")
+            return
+        }
+        lastProcessedMessageHash = msgHash
+
         if (isProcessing) {
             Log.d("MainActivity", "Already processing, skipping ($source)")
             return
@@ -192,13 +310,20 @@ class MainActivity : AppCompatActivity() {
         }
 
         isProcessing = true
+        currentSender = sender
+        currentMessageBody = originalBody
 
         Log.d("MainActivity", "---------- PROCESSING SMS ($source) ----------")
         Log.d("MainActivity", "From: $sender")
 
         runOnUiThread {
-            smsTextView.text = "From: $sender\n\nMessage: $llmInput"
+            smsTextView.text = "From: $sender\n\nMessage: $originalBody"
             resultTextView.text = "🔍 Analyzing..."
+            explanationTextView.text = ""
+            urlAnalyzerTextView.text = ""
+            urlAnalyzerTextView.visibility = View.GONE
+            findViewById<View>(R.id.urlDivider).visibility = View.GONE
+            findViewById<TextView>(R.id.urlScanLabel).visibility = View.GONE
         }
 
         lifecycleScope.launch {
@@ -262,15 +387,27 @@ class MainActivity : AppCompatActivity() {
     ) {
         try {
             val (label, confidence) = classifier.classify(classifierInput)
-            val (riskScore, riskCategory) = getRiskScore(label, confidence)
 
             if (label == "ERROR") {
+                val timestamp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                } else {
+                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+                        .format(java.util.Date())
+                }
+                db.insertPendingMessage(sender, timestamp, originalBody)
+                scheduleAnalysisWorker()
+
                 runOnUiThread {
-                    resultTextView.text = "❌ Error analyzing\nCheck internet"
+                    resultTextView.text = "⏳ Offline: Analysis Queued"
                     resultTextView.setTextColor(getColor(android.R.color.darker_gray))
+                    explanationTextView.text = "Analysis will resume when internet is available."
+                    explanationTextView.setTextColor(getColor(android.R.color.darker_gray))
                 }
                 return
             }
+
+            val (riskScore, riskCategory) = getRiskScore(label, confidence)
 
             val riskScorePercent = riskScore * 100
 
@@ -398,11 +535,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        smsReceiver?.let {
-            try { unregisterReceiver(it) } catch (e: Exception) {
-                Log.d("MainActivity", "Failed to unregister Broadcast Receiver: ${e.message}")
-            }
-        }
         smsObserver?.let {
             try { contentResolver.unregisterContentObserver(it) } catch (e: Exception) {
                 Log.d("MainActivity", "Failed to unregister SMS Observer: ${e.message}")

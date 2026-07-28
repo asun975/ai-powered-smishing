@@ -26,7 +26,7 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
     private lateinit var emptyView: View
     private lateinit var tabLayout: TabLayout
 
-    private var currentTab = "caution"  // "caution" or "quarantined"
+    private var currentTab = DatabaseHelper.STATUS_CAUTION  // "caution" or "quarantined" or "pending"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -61,10 +61,15 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
 
         tabLayout.addTab(tabLayout.newTab().setText("Caution"))
         tabLayout.addTab(tabLayout.newTab().setText("Quarantine"))
+        tabLayout.addTab(tabLayout.newTab().setText("Pending"))
 
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
-                currentTab = if (tab.position == 0) "caution" else "quarantined"
+                currentTab = when (tab.position) {
+                    0 -> DatabaseHelper.STATUS_CAUTION
+                    1 -> DatabaseHelper.STATUS_QUARANTINED
+                    else -> DatabaseHelper.STATUS_PENDING
+                }
                 loadMessages()
             }
             override fun onTabUnselected(tab: TabLayout.Tab) {}
