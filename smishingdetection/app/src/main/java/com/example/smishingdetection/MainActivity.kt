@@ -33,35 +33,45 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 
+/**
+ * The app's home screen. Runs in the foreground (or background, via
+ * onDestroy-safe listeners) watching for new SMS messages, and pipes each
+ * one through: preprocessing -> classifier API -> (if risky) LLM explainer
+ * API -> URL scan -> local database -> on-screen result / notification.
+ */
 class MainActivity : AppCompatActivity() {
-    private lateinit var urlAnalyzer: UrlAnalyzer
-    private lateinit var urlAnalyzerTextView: TextView
-    private lateinit var smsTextView: TextView
-    private lateinit var resultTextView: TextView
-    private lateinit var explanationTextView: TextView
-    private lateinit var classifier: SmishingClassifier
-    private lateinit var explainer: LlmExplainer
-    private lateinit var db: DatabaseHelper
-    private var smsObserver: ContentObserver? = null
-    private var lastProcessedSmsId: String? = null
-    private var lastProcessedMessageHash: Int? = null
-    private var isProcessing = false
+    private lateinit var urlAnalyzer: UrlAnalyzer   //talks to the URL API
+    private lateinit var urlAnalyzerTextView: TextView  //shows URL scan result, if a URL was found
+    private lateinit var smsTextView: TextView  //shows the "From:... Message:... (original uncleaned text)"
+    private lateinit var resultTextView: TextView   //shows the risk score from DistilBERT (Low/Medium/High %)
+    private lateinit var explanationTextView: TextView  //shows the returned LLM explanation
+    private lateinit var classifier: SmishingClassifier //talks to the DistilBERT API
+    private lateinit var explainer: LlmExplainer    //talks to the LLM Groq API
+    private lateinit var db: DatabaseHelper //the local DB storage
+    private var smsObserver: ContentObserver? = null //watches for SMS content changes
+    private var lastProcessedSmsId: String? = null  //tracks if the last SMS was already processed
+    private var lastProcessedMessageHash: Int? = null   //like lastProcessedSmsId but if the content is the same
+    private var isProcessing = false    //so that if 2 messages arrive, only one goes at a time
 
+    //Remembers the most recently analyzed message so refreshLastMessageUI() can look it back up in the DB when the WorkManager
+    //finishes the offline retry
     private var currentSender: String? = null
     private var currentMessageBody: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        supportActionBar?.hide()
+        supportActionBar?.hide()    //hides the default title bar at the top which caused issues on different phones
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_main)  //refers to showing the activity_main.xml
 
         Log.d("MainActivity", "========== APP STARTED ===========")
 
+        //Set up the UI
         smsTextView = findViewById(R.id.smsTextView)
         resultTextView = findViewById(R.id.resultTextView)
         explanationTextView = findViewById(R.id.explanationTextView)
         urlAnalyzerTextView = findViewById(R.id.urlAnalyzerTextView)
 
+        //Set up API endpoints from BuildConfig (set per gradle config)
         val apiUrl = BuildConfig.CLASSIFIER_API_URL
         val llmUrl = BuildConfig.LLM_API_URL
 
@@ -72,16 +82,20 @@ class MainActivity : AppCompatActivity() {
 
         resultTextView.text = "⏳ Setting up..."
 
-        // FAB opens the suspicious messages inbox
+        // Tapping the floating action button (mailbox) opens the "suspicious messages" inbox screen
         findViewById<FloatingActionButton>(R.id.fabInbox).setOnClickListener {
             startActivity(Intent(this, SuspiciousMessagesActivity::class.java))
         }
 
-        requestPermissions()
+        requestPermissions()    //starts startBothDetectionMethods() once the permission to read/write are given
         scheduleAnalysisWorker() // Check for any pending messages on startup
-        observeWorkerStatus()
+        observeWorkerStatus()   //listens to the background worker to finish
     }
 
+    /**
+     * Watches WorkManager for the offline-analysis worker (see classifyMessage's
+     * "ERROR" branch) finishing, and refreshes the screen once it has.
+     */
     private fun observeWorkerStatus() {
         WorkManager.getInstance(applicationContext)
             .getWorkInfosForUniqueWorkLiveData("SmishingAnalysis")
@@ -94,6 +108,11 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
+    /**
+     * After a background retry finishes, re-check the DB for the message we were
+     * last showing on screen — if it's now been analyzed (no longer PENDING),
+     * update the UI with the real result instead of the "queued" placeholder.
+     */
     private fun refreshLastMessageUI() {
         val sender = currentSender ?: return
         val body = currentMessageBody ?: return
@@ -111,6 +130,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Renders a DB row (already-analyzed message) onto the risk/explanation/URL views. */
     private fun updateUIWithAnalyzedMessage(msg: Map<String, String>) {
         val riskScore = msg[DatabaseHelper.COL_RISK_SCORE]?.toDoubleOrNull() ?: 0.0
         val riskCategory = when {
@@ -151,6 +171,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Enqueues (or re-enqueues) the background worker that retries classification
+     * for any message stuck in "PENDING" status — used when the classifier API
+     * was unreachable at the time a message first arrived (see the offline-mode work).
+     * Requires network connectivity to actually run (see Constraints below).
+     */
     private fun scheduleAnalysisWorker() {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -168,6 +194,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    /** Asks for SMS + (on Android 13+) notification permissions, if not already granted. */
     private fun requestPermissions() {
         val permissionsNeeded = mutableListOf<String>()
 
@@ -189,10 +216,12 @@ class MainActivity : AppCompatActivity() {
         if (permissionsNeeded.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissionsNeeded.toTypedArray(), 999)
         } else {
+            // Already have everything we need — start watching for SMS right away
             startBothDetectionMethods()
         }
     }
 
+    /** Callback for the permission request above (request code 999). */
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
