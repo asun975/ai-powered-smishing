@@ -19,7 +19,7 @@ class SmishingAnalysisWorker(
         val db = DatabaseHelper(applicationContext)
         val classifier = SmishingClassifier(BuildConfig.CLASSIFIER_API_URL)
         val explainer = LlmExplainer(BuildConfig.LLM_API_URL)
-        val urlAnalyzer = UrlAnalyzer()
+        val urlAnalyzer = UrlAnalyzer(BuildConfig.SCAN_API_URL)
 
         val pendingMessages = db.getByStatus(DatabaseHelper.STATUS_PENDING)
         Log.d("SmishingWorker", "Found ${pendingMessages.size} pending messages")
@@ -40,7 +40,7 @@ class SmishingAnalysisWorker(
 
             val classifierInput = Preprocessing.preprocessClassifierText(body)
             val llmInput = Preprocessing.preprocessLlmText(body)
-            val urls = Preprocessing.extractUrl(body)
+            val firstUrl = Preprocessing.extractFirstUrl(body)
 
             try {
                 val (label, confidence) = classifier.classify(classifierInput)
@@ -63,15 +63,15 @@ class SmishingAnalysisWorker(
                     explanation = explainer.explain(llmInput, label, riskScore)
                 }
 
-                val scanResult = urlAnalyzer.analyzeUrl(urls.firstOrNull())
-
+                val (scanStatus, scanResult) = urlAnalyzer.analyzeUrl(firstUrl)
+                val scanResultString = "$scanStatus: $scanResult"
                 val prediction = if (label == "SPAM") "SPAM" else "SAFE"
                 db.updateAnalyzedMessage(
                     id = id,
                     riskScore = riskScorePercent.toDouble(),
                     prediction = prediction,
                     explanation = explanation,
-                    urlScanResult = scanResult
+                    urlScanResult = scanResultString
                 )
 
                 val status = DatabaseHelper.statusFromScore(riskScorePercent.toDouble())
@@ -87,7 +87,7 @@ class SmishingAnalysisWorker(
                         messageId = id,
                         originalBody = body,
                         timestamp = timestamp,
-                        scanResult = scanResult ?: "",
+                        scanResult = scanResultString,
                         status = status
                     )
                 }

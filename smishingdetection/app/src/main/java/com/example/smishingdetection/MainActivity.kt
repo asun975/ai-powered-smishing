@@ -311,13 +311,13 @@ class MainActivity : AppCompatActivity() {
 
         isProcessing = true
         currentSender = sender
-        currentMessageBody = originalBody
+        currentMessageBody = body
 
         Log.d("MainActivity", "---------- PROCESSING SMS ($source) ----------")
         Log.d("MainActivity", "From: $sender")
 
         runOnUiThread {
-            smsTextView.text = "From: $sender\n\nMessage: $originalBody"
+            smsTextView.text = "From: $sender\n\nMessage: $body"
             resultTextView.text = "🔍 Analyzing..."
             explanationTextView.text = ""
             urlAnalyzerTextView.text = ""
