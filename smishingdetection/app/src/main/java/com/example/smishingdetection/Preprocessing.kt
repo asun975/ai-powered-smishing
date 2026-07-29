@@ -51,6 +51,7 @@ class Preprocessing {
         // text preprocessing remove emoji unicode characters, punctuation and extra whitespace
         fun preprocessClassifierText(text: String): String {
             val textInput = removeSensitiveData(text).lowercase()
+                .replace(Regex("""[^a-z0-9\s]"""), "")
                 .replace(emoji, "")
                 .replace(punctuation, " ") // prevent words from joining
                 .replace(whitespaces, " ") // remove extra whitespaces
@@ -72,15 +73,15 @@ class Preprocessing {
                 .replace(mfaCode, "[VERIFICATION CODE]")
                 .trim()
         }
-        fun extractUrl(body: String): List<String?> {
-            val urls = Regex("""(?i)\b((?:https?://|www\.)[^\s<>"']+)""").findAll(body)
+        fun extractFirstUrl(body: String): String? {
+            val url = Regex("""(?i)\b((?:https?://|www\.)[^\s<>"']+)""").findAll(body)
                 .map { match ->
                     match.value.trimEnd(
                         '.', ',', ';', ':', '!', '?', ')', ']', '}'
                     )
                 }
-                .toList()
-            return urls
+                .toList().firstOrNull()
+            return url
         }
     }
 }

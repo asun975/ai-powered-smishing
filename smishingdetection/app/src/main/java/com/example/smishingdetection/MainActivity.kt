@@ -52,6 +52,7 @@ class MainActivity : AppCompatActivity() {
     private var lastProcessedSmsId: String? = null  //tracks if the last SMS was already processed
     private var lastProcessedMessageHash: Int? = null   //like lastProcessedSmsId but if the content is the same
     private var isProcessing = false    //so that if 2 messages arrive, only one goes at a time
+    private lateinit var sanitizer: Preprocessing.Companion
 
     //Remembers the most recently analyzed message so refreshLastMessageUI() can look it back up in the DB when the WorkManager
     //finishes the offline retry
@@ -74,11 +75,13 @@ class MainActivity : AppCompatActivity() {
         //Set up API endpoints from BuildConfig (set per gradle config)
         val apiUrl = BuildConfig.CLASSIFIER_API_URL
         val llmUrl = BuildConfig.LLM_API_URL
+        val urlSandboxUrl = BuildConfig.SCAN_API_URL
 
         classifier = SmishingClassifier(apiUrl)
         explainer = LlmExplainer(llmUrl)
         db = DatabaseHelper(this)
-        urlAnalyzer = UrlAnalyzer()
+        urlAnalyzer = UrlAnalyzer(urlSandboxUrl)
+        sanitizer = Preprocessing
 
         resultTextView.text = "⏳ Setting up..."
 
@@ -269,8 +272,7 @@ class MainActivity : AppCompatActivity() {
 
                     if (smsId != null && smsId != lastProcessedSmsId) {
                         lastProcessedSmsId = smsId
-                        val (classifierInput, llmInput, urls) = preprocessSmsMessage(body)
-                        processSmsMessage(sender, body, classifierInput, llmInput, "DATABASE", urls)
+                        processSmsMessage(sender, body, "DATABASE", sanitizer)
                     }
                 }
             }
@@ -279,25 +281,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun preprocessSmsMessage(body: String): Triple<String, String, List<String?>> {
-        val preprocessor = Preprocessing
-        return Triple(
-            preprocessor.preprocessClassifierText(body),
-            preprocessor.preprocessLlmText(body),
-            preprocessor.extractUrl(body)
-        )
-    }
-
     private fun processSmsMessage(
         sender: String,
-        originalBody: String,
-        classifierInput: String,
-        llmInput: String,
+        body: String,
         source: String,
-        urls: List<String?>
+        sanitizer: Preprocessing.Companion
     ) {
+        val messageUrl: String? = sanitizer.extractFirstUrl(body)
+        val classifierInput = sanitizer.preprocessClassifierText(body)
+        val llmInput = sanitizer.preprocessLlmText(body)
+
         // Simple hash-based deduplication
-        val msgHash = (sender + originalBody).hashCode()
+        val msgHash = (sender + body).hashCode()
         if (msgHash == lastProcessedMessageHash) {
             Log.d("MainActivity", "Duplicate message detected, skipping ($source)")
             return
@@ -309,20 +304,20 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        if (originalBody.isBlank()) {
+        if (body.isBlank()) {
             Log.d("MainActivity", "Skipping blank/whitespace-only message from $sender ($source)")
             return
         }
 
         isProcessing = true
         currentSender = sender
-        currentMessageBody = originalBody
+        currentMessageBody = body
 
         Log.d("MainActivity", "---------- PROCESSING SMS ($source) ----------")
         Log.d("MainActivity", "From: $sender")
 
         runOnUiThread {
-            smsTextView.text = "From: $sender\n\nMessage: $originalBody"
+            smsTextView.text = "From: $sender\n\nMessage: $body"
             resultTextView.text = "🔍 Analyzing..."
             explanationTextView.text = ""
             urlAnalyzerTextView.text = ""
@@ -332,7 +327,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            classifyMessage(sender, originalBody, classifierInput, llmInput, urls.firstOrNull())
+            classifyMessage(sender, body, classifierInput, llmInput, messageUrl)
             isProcessing = false
         }
     }
@@ -451,24 +446,36 @@ class MainActivity : AppCompatActivity() {
                     explanationTextView.setTextColor(getColor(android.R.color.holo_red_light))
                 }
             }
-            // After getting the explanation, call the URL analyzer:
-            val scanResult = urlAnalyzer.analyzeUrl(url)
 
-            // Then display it somewhere — add a TextView for it, or append to explanationTextView:
+            // Call URL sandbox and display result in Main Screen UI
+            val (scanStatus, scanResult) = urlAnalyzer.analyzeUrl(url)
+
             runOnUiThread {
-                if (!scanResult.isNullOrBlank() && scanResult != "No Urls found") {
-                    urlAnalyzerTextView.text = scanResult
-                    urlAnalyzerTextView.visibility = android.view.View.VISIBLE
-                    findViewById<View>(R.id.urlDivider).visibility = android.view.View.VISIBLE
-                    findViewById<TextView>(R.id.urlScanLabel).visibility = android.view.View.VISIBLE
+                // Hide UI if no URLs are found in message
+                if (scanStatus == ScanStatus.SKIPPED) {
+                    // Debug code
+                    Log.d("MainActivity", scanResult)
+                    urlAnalyzerTextView.visibility = View.GONE
+                    findViewById<View>(R.id.urlDivider).visibility = View.GONE
+                    findViewById<TextView>(R.id.urlScanLabel).visibility = View.GONE
                 } else {
-                    urlAnalyzerTextView.visibility = android.view.View.GONE
-                    findViewById<View>(R.id.urlDivider).visibility = android.view.View.GONE
-                    findViewById<TextView>(R.id.urlScanLabel).visibility = android.view.View.GONE
+                    // Display scan result or error message to user
+                    urlAnalyzerTextView.text = scanResult
+                    urlAnalyzerTextView.visibility = View.VISIBLE
+                    findViewById<View>(R.id.urlDivider).visibility = View.VISIBLE
+                    findViewById<TextView>(R.id.urlScanLabel).visibility = View.VISIBLE
                 }
             }
             // Save to database for MEDIUM (caution) and HIGH (quarantined) risk
             if (riskCategory == "MEDIUM" || riskCategory == "HIGH") {
+                // Format url scan result
+                val urlScanResult =
+                    if(scanStatus == ScanStatus.SUCCESS) {
+                        scanResult
+                    } else {
+                        "No scan result available."
+                    }
+                // Format date
                 val timestamp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
                 } else {
@@ -483,7 +490,7 @@ class MainActivity : AppCompatActivity() {
                     riskScore = riskScorePercent.toDouble(),
                     prediction = prediction,
                     explanation = explanation,
-                    urlScanResult = scanResult
+                    urlScanResult = urlScanResult
                 )
                 val status = DatabaseHelper.statusFromScore(riskScorePercent.toDouble())
                 Log.d("MainActivity", "Saved message to DB: $riskCategory")
@@ -496,7 +503,7 @@ class MainActivity : AppCompatActivity() {
                             riskScorePercent = riskScorePercent,
                             riskCategory = riskCategory,
                             explanation = explanation,
-                            scanResult = scanResult,
+                            scanResult = urlScanResult,
                             messageId = newMessageId,
                             status = status,
                             timestamp = timestamp
@@ -512,7 +519,7 @@ class MainActivity : AppCompatActivity() {
                         messageId = newMessageId,
                         originalBody = originalBody,
                         timestamp = timestamp,
-                        scanResult = scanResult,
+                        scanResult = Pair(scanStatus, scanResult),
                         status = status
                     )
                 }
@@ -529,7 +536,9 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         smsObserver?.let {
-            try { contentResolver.unregisterContentObserver(it) } catch (e: Exception) { }
+            try { contentResolver.unregisterContentObserver(it) } catch (e: Exception) {
+                Log.d("MainActivity", "Failed to unregister SMS Observer: ${e.message}")
+            }
         }
     }
 }
