@@ -1,6 +1,5 @@
 package com.example.smishingdetection
 
-import android.content.BroadcastReceiver
 import android.content.pm.PackageManager
 import android.database.ContentObserver
 import android.os.Bundle
@@ -10,9 +9,7 @@ import androidx.core.app.ActivityCompat
 import android.util.Log
 import androidx.core.content.ContextCompat
 import android.Manifest
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.database.Cursor
 import android.os.Build
 import android.os.Handler
@@ -25,6 +22,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.appcompat.app.AlertDialog
 import android.view.View
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
@@ -40,6 +38,42 @@ import java.util.concurrent.TimeUnit
  * API -> URL scan -> local database -> on-screen result / notification.
  */
 class MainActivity : AppCompatActivity() {
+    companion object {
+        private val REQUIRED_PERMISSIONS = arrayOf(
+            Manifest.permission.RECEIVE_SMS,
+            Manifest.permission.READ_SMS,
+        )
+        private val REQUIRED_PERMISSION =
+            Manifest.permission.POST_NOTIFICATIONS
+    }
+    private var NOTIFICATIONS_ALLOWED = false
+
+    // Request SMS permissions
+    private val requestPermissionsLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+            val allGranted = permissions.values.all { it }
+
+            if(allGranted) {
+                startDatabaseObserver()
+                scheduleAnalysisWorker() // Check for any pending messages on startup
+                observeWorkerStatus()   //listens to the background worker to finish
+            } else {
+                onPermissionsDenied()
+            }
+        }
+    // Request permission to send user notifications
+    private val requestPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            if(isGranted) {
+                NOTIFICATIONS_ALLOWED = true
+            } else {
+                onPermissionDenied()
+            }
+        }
     private lateinit var urlAnalyzer: UrlAnalyzer   //talks to the URL API
     private lateinit var urlAnalyzerTextView: TextView  //shows URL scan result, if a URL was found
     private lateinit var smsTextView: TextView  //shows the "From:... Message:... (original uncleaned text)"
@@ -86,12 +120,120 @@ class MainActivity : AppCompatActivity() {
         findViewById<FloatingActionButton>(R.id.fabInbox).setOnClickListener {
             startActivity(Intent(this, SuspiciousMessagesActivity::class.java))
         }
+        requestRequiredPermissions() // read and receive SMS
+        requestPermission() // post notifications
+    }
+    private fun requestPermission() {
+        when {
+            // Permission already granted
+            ContextCompat.checkSelfPermission(
+                this,
+                REQUIRED_PERMISSION
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                NOTIFICATIONS_ALLOWED = true
+            }
 
-        requestPermissions()    //starts startBothDetectionMethods() once the permission to read/write are given
-        scheduleAnalysisWorker() // Check for any pending messages on startup
-        observeWorkerStatus()   //listens to the background worker to finish
+            // Permission was previously denied, show explanation
+            ActivityCompat.shouldShowRequestPermissionRationale(
+                this,
+                REQUIRED_PERMISSION
+            ) -> {
+                AlertDialog.Builder(this)
+                    .setTitle("Allow Smishing Detector notifications")
+                    .setMessage(
+                        "Smishing Detector will send alerts for possible smishing messages."
+                    )
+                    .setPositiveButton("Continue") { _, _ ->
+                        requestPermissionLauncher.launch(
+                            REQUIRED_PERMISSION
+                        )
+                    }
+                    .setNegativeButton("Cancel") { _, _ ->
+                        AlertDialog.Builder(this)
+                            .setTitle("Smishing Detector Alerts")
+                            .setMessage(
+                                "Smishing Detector will not send notifications for possible smishing messages. Message analysis will be saved to this device and viewable through the app."
+                            )
+                            .setPositiveButton("Ok", null)
+                            .show()
+                    }
+                    .show()
+            }
+            // First request (or no rationale required)
+            else -> {
+                requestPermissionLauncher.launch(
+                    REQUIRED_PERMISSION
+                )
+            }
+        }
+    }
+    private fun requestRequiredPermissions() {
+        val missingPermissions = REQUIRED_PERMISSIONS.filter {
+            ContextCompat.checkSelfPermission(
+                this,
+                it
+            ) != PackageManager.PERMISSION_GRANTED
+        }
+
+        when {
+            // All permissions already granted
+            missingPermissions.isEmpty() -> {
+                startDatabaseObserver()
+                scheduleAnalysisWorker() // Check for any pending messages on startup
+                observeWorkerStatus()   //listens to the background worker to finish
+            }
+            // Show an educational UI before requesting
+            missingPermissions.any {
+                ActivityCompat.shouldShowRequestPermissionRationale(
+                    this,
+                    it
+                )
+            } -> {
+                showSmsPermissionRationale(
+                    missingPermissions.toTypedArray()
+                )
+            }
+            // First request (or no rationale required)
+            else -> {
+                requestPermissionsLauncher.launch(
+                    missingPermissions.toTypedArray()
+                )
+            }
+        }
     }
 
+    private fun showSmsPermissionRationale(
+        permissions: Array<String>
+    ) {
+        AlertDialog.Builder(this)
+            .setTitle("Permissions Required")
+            .setMessage("Read SMS and Receive SMS access are required to use the Smishing Detection feature.")
+            .setPositiveButton("Continue") { _, _ ->
+                requestPermissionsLauncher.launch(permissions)
+            }
+            .setNegativeButton("Cancel") { _, _ ->
+                onPermissionsDenied()
+            }
+            .show()
+    }
+    private fun onPermissionsDenied() {
+        AlertDialog.Builder(this)
+            .setTitle("Exit App")
+            .setMessage(
+                "Smishing Detector requires permissions to read and receive your SMS messages."
+            )
+            .setNegativeButton("OK", null)
+            .show()
+    }
+    private fun onPermissionDenied() {
+        AlertDialog.Builder(this)
+            .setTitle("Smishing Detector Alerts")
+            .setMessage(
+                "Smishing Detector will not send notifications for possible smishing messages. Message analysis will be saved to this device and viewable through the app."
+            )
+            .setPositiveButton("Ok", null)
+            .show()
+    }
     /**
      * Watches WorkManager for the offline-analysis worker (see classifyMessage's
      * "ERROR" branch) finishing, and refreshes the screen once it has.
@@ -194,6 +336,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+
     /** Asks for SMS + (on Android 13+) notification permissions, if not already granted. */
     private fun requestPermissions() {
         val permissionsNeeded = mutableListOf<String>()
@@ -206,18 +349,12 @@ class MainActivity : AppCompatActivity() {
             != PackageManager.PERMISSION_GRANTED) {
             permissionsNeeded.add(Manifest.permission.READ_SMS)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED) {
-                permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
 
         if (permissionsNeeded.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissionsNeeded.toTypedArray(), 999)
         } else {
             // Already have everything we need — start watching for SMS right away
-            startBothDetectionMethods()
+            startDatabaseObserver()
         }
     }
 
@@ -230,17 +367,17 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 999) {
             if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                startBothDetectionMethods()
+                startDatabaseObserver()
             } else {
-                resultTextView.text = "❌ Permissions needed!"
+                AlertDialog.Builder(this)
+                    .setTitle("Exit App")
+                    .setMessage(
+                        "Smishing Detector requires permissions to read and receive your SMS messages."
+                    )
+                    .setPositiveButton("OK", null)
+                    .show()
             }
         }
-    }
-
-    private fun startBothDetectionMethods() {
-        Log.d("MainActivity", "========== STARTING DETECTION ==========")
-        resultTextView.text = "✅ Ready! Waiting for SMS..."
-        startDatabaseObserver()
     }
 
     private fun startDatabaseObserver() {
@@ -251,6 +388,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
         contentResolver.registerContentObserver(Telephony.Sms.CONTENT_URI, true, smsObserver!!)
+
+        Log.d("MainActivity", "========== STARTING DETECTION ==========")
+        resultTextView.text = "✅ Ready! Waiting for SMS..."
     }
 
     private fun checkLatestSms() {
@@ -270,7 +410,7 @@ class MainActivity : AppCompatActivity() {
                     if (smsId != null && smsId != lastProcessedSmsId) {
                         lastProcessedSmsId = smsId
                         val (classifierInput, llmInput, urls) = preprocessSmsMessage(body)
-                        processSmsMessage(sender, body, classifierInput, llmInput, "DATABASE", urls)
+                        processSmsMessage(sender, body, classifierInput, llmInput, urls)
                     }
                 }
             }
@@ -293,24 +433,23 @@ class MainActivity : AppCompatActivity() {
         originalBody: String,
         classifierInput: String,
         llmInput: String,
-        source: String,
         urls: List<String?>
     ) {
         // Simple hash-based deduplication
         val msgHash = (sender + originalBody).hashCode()
         if (msgHash == lastProcessedMessageHash) {
-            Log.d("MainActivity", "Duplicate message detected, skipping ($source)")
+            Log.d("MainActivity", "Duplicate message detected, skipping")
             return
         }
         lastProcessedMessageHash = msgHash
 
         if (isProcessing) {
-            Log.d("MainActivity", "Already processing, skipping ($source)")
+            Log.d("MainActivity", "Already processing, skipping")
             return
         }
 
         if (originalBody.isBlank()) {
-            Log.d("MainActivity", "Skipping blank/whitespace-only message from $sender ($source)")
+            Log.d("MainActivity", "Skipping blank/whitespace-only message from $sender")
             return
         }
 
@@ -318,7 +457,7 @@ class MainActivity : AppCompatActivity() {
         currentSender = sender
         currentMessageBody = originalBody
 
-        Log.d("MainActivity", "---------- PROCESSING SMS ($source) ----------")
+        Log.d("MainActivity", "---------- PROCESSING SMS ----------")
         Log.d("MainActivity", "From: $sender")
 
         runOnUiThread {
@@ -458,13 +597,13 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 if (!scanResult.isNullOrBlank() && scanResult != "No Urls found") {
                     urlAnalyzerTextView.text = scanResult
-                    urlAnalyzerTextView.visibility = android.view.View.VISIBLE
-                    findViewById<View>(R.id.urlDivider).visibility = android.view.View.VISIBLE
-                    findViewById<TextView>(R.id.urlScanLabel).visibility = android.view.View.VISIBLE
+                    urlAnalyzerTextView.visibility = View.VISIBLE
+                    findViewById<View>(R.id.urlDivider).visibility = View.VISIBLE
+                    findViewById<TextView>(R.id.urlScanLabel).visibility = View.VISIBLE
                 } else {
-                    urlAnalyzerTextView.visibility = android.view.View.GONE
-                    findViewById<View>(R.id.urlDivider).visibility = android.view.View.GONE
-                    findViewById<TextView>(R.id.urlScanLabel).visibility = android.view.View.GONE
+                    urlAnalyzerTextView.visibility = View.GONE
+                    findViewById<View>(R.id.urlDivider).visibility = View.GONE
+                    findViewById<TextView>(R.id.urlScanLabel).visibility = View.GONE
                 }
             }
             // Save to database for MEDIUM (caution) and HIGH (quarantined) risk
@@ -502,7 +641,8 @@ class MainActivity : AppCompatActivity() {
                             timestamp = timestamp
                         )
                     }
-                } else {
+                }
+                if (NOTIFICATIONS_ALLOWED) {
                     NotificationHelper.sendSmishingNotification(
                         context = this,
                         sender = sender,
