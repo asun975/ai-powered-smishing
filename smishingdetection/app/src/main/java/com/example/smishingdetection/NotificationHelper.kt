@@ -36,9 +36,14 @@ object NotificationHelper {
         messageId: Long,
         originalBody: String,
         timestamp: String,
-        scanResult: String,
+        scanResult: Pair<ScanStatus,String>,
         status: String
     ) {
+        val urlScanResult = if(scanResult.first == ScanStatus.SUCCESS) {
+            scanResult.second
+        } else {
+                "No scan result saved: ${scanResult.second}"
+        }
         val intent = Intent(context, MessageDetailActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("phone", sender)
@@ -48,7 +53,7 @@ object NotificationHelper {
             putExtra("status", status)
             putExtra("explanation", explanation)
             putExtra("id", messageId.toString())
-            putExtra("url_scan_result", scanResult)
+            putExtra("url_scan_result", urlScanResult)
         }
 
         val pendingIntent = PendingIntent.getActivity(
