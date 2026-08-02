@@ -18,14 +18,15 @@ from transformers import (
     AutoModelForSequenceClassification
 )
 
-from preprocessing import sanitize_text, removeUrl, text_preprocess, remove_special_char
+from preprocessing import preprocessClassifierText
 #TODO logging results
 N_SIZE=1000
 BATCH_SIZE=32
 MAX_LENGTH=128
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 MODEL_NAME = 'models/sms-spam-model-v2'
-DATASET_PATH = 'data/test_samples.csv'
+DATASET_PATH = 'src/data/test_samples.csv'
+TEST_RESULTS = 'src/data/test_results.csv'
 
 def load_model():
 
@@ -70,10 +71,7 @@ def main():
 
         # Text preprocessing and sanitization
         df["sanitized_text"] = df["text"].copy()
-        df["sanitized_text"] = df["sanitized_text"].apply(lambda x: sanitize_text(x))
-        df["sanitized_text"] = df["sanitized_text"].apply(lambda x: removeUrl(x))
-        df["sanitized_text"] = df["sanitized_text"].apply(lambda x: text_preprocess(x))
-        df["sanitized_text"] = df["sanitized_text"].apply(lambda x: remove_special_char(x))
+        df["sanitized_text"] = df["sanitized_text"].apply(lambda x: preprocessClassifierText(x))
 
         # Convert to Hugging Face dataset
         dataset = Dataset.from_pandas(df)
@@ -105,12 +103,13 @@ def main():
             if DEVICE=="cuda":
                 torch.cuda.reset_peak_memory_stats()
 
-            for processed_text, original_text in zip(batch['sanitized_text'], batch['text']):
+            for processed_text, original_text, truth_label in zip(batch['sanitized_text'], batch['text'], batch['label']):
                 result = classifier(processed_text)[0]
                 label = {"LABEL_0": 0, "LABEL_1": 1}[result["label"]]
                 score = result["score"]
                 risk_score = score if label == 1 else (1.0 - score)
                 results_dict = {
+                    'label': truth_label,
                     'original_text': original_text,
                     'processed_text': processed_text,
                     'pred': label,
@@ -190,8 +189,8 @@ def main():
        
         # Save test results to csv
         df_results = pd.DataFrame.from_dict(all_results)
-        df_results.to_csv("data/test_results.csv")
-        print("Saved all results to data/test_results.csv")
+        df_results.to_csv(TEST_RESULTS, index=False)
+        print("Saved all results to " + TEST_RESULTS)
     
     except Exception as e:
             print(f"An unexpected exception occured of type {type(e)}")
