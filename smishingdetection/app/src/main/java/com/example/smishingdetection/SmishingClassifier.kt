@@ -7,8 +7,23 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
+/**
+ * Talks to the DistilBERT-based classifier API. Given a (PII-stripped)
+ * message, asks the API whether it's SPAM or SAFE, along with a confidence
+ * score for that call.
+ */
 class SmishingClassifier(private val apiUrl: String) {
 
+    /**
+     * Sends the cleaned message text to the classifier API and returns a
+     * (label, confidence) pair. Runs on a background thread (Dispatchers.IO)
+     * since it's a real network call. If anything goes wrong — a non-200
+     * response, an API-reported error, a missing field in the response, or a
+     * thrown exception (e.g. no network, timeout) — this returns
+     * Pair("ERROR", 0f) instead of crashing. That special "ERROR" label is
+     * what MainActivity checks for to decide whether to queue the message
+     * for an offline retry instead of treating it as a real classification.
+     */
     suspend fun classify(text: String): Pair<String, Float> = withContext(Dispatchers.IO) {
         Log.d("SmishingClassifier", "Classifying: $text")
 
