@@ -28,6 +28,12 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
 
     private var currentTab = DatabaseHelper.STATUS_CAUTION  // "caution" or "quarantined" or "pending"
 
+    /**
+     * Runs once when the inbox screen opens. Sets up the RecyclerView + its
+     * adapter (wiring tap-to-open-detail and tap-menu-to-Block/Quarantine/Mark
+     * Safe), builds the three tabs (Caution, Quarantine, Pending), and loads
+     * whichever tab's messages are shown first.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         supportActionBar?.hide()
@@ -79,11 +85,23 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
         loadMessages()
     }
 
+    /**
+     * Refreshes the message list every time this screen becomes visible again
+     * (e.g. coming back from the detail screen after quarantining/blocking a
+     * message) — without this, the list could show stale data until the next
+     * tab switch.
+     */
     override fun onResume() {
         super.onResume()
         loadMessages()
     }
 
+    /**
+     * Queries the database for whichever status the current tab represents,
+     * pushes the results into the adapter, and toggles between showing the
+     * list or the "empty" placeholder view depending on whether any messages
+     * were found.
+     */
     private fun loadMessages() {
         val messages = db.getByStatus(currentTab)
         adapter.updateData(messages)
@@ -97,6 +115,7 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
         }
     }
 
+    /** Opens MessageDetailActivity for a tapped message, passing along all its stored data. */
     private fun openDetail(msg: Map<String, String>) {
         val intent = Intent(this, MessageDetailActivity::class.java).apply {
             putExtra("phone", msg[DatabaseHelper.COL_PHONE])
@@ -112,6 +131,12 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
     }
 
 
+    /**
+     * Builds and shows the ⋮ quick-action menu for a message row. Always
+     * offers Detail and Mark Safe; offers Quarantine only on the Caution tab,
+     * and Block only on other tabs (i.e. Quarantine/Pending) — mirroring the
+     * same three-way action split used in MessageDetailActivity.
+     */
     private fun showPopupMenu(msg: Map<String, String>, anchor: View) {
         val popup = PopupMenu(this, anchor)
         popup.menu.add(0, 1, 0, "Detail")
@@ -149,6 +174,14 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
         popup.show()
     }
 
+    /**
+     * Shows a confirmation dialog before blocking a sender's number, then
+     * copies the number to the clipboard and opens Android's built-in
+     * blocked-numbers settings screen — same flow as MessageDetailActivity's
+     * own blockNumber(), just taking the phone number as a parameter instead
+     * of reading it from a field, since this screen doesn't have one "current"
+     * message.
+     */
     private fun blockNumber(phoneNumber: String) {
         AlertDialog.Builder(this)
             .setTitle("Block Number")
@@ -166,6 +199,7 @@ class SuspiciousMessagesActivity : AppCompatActivity() {
             .show()
     }
 
+    /** Handles the toolbar's back arrow (top-left "up" button) by closing this screen. */
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == android.R.id.home) {
             finish()

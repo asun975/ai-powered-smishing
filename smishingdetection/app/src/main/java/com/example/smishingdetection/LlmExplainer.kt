@@ -7,8 +7,22 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
+/**
+ * Talks to the Groq-hosted LLM explanation API. Given a (PII-masked) message,
+ * its classification, and its risk score, asks the LLM for a short,
+ * human-readable reason why the message was flagged.
+ */
 class LlmExplainer(private val apiUrl: String) {
 
+
+    /**
+     * Sends the message + classification + risk score to the LLM API and
+     * returns its explanation text. Runs on a background thread (Dispatchers.IO)
+     * since it makes a real network call. If the request fails for any reason
+     * (network error, non-200 response, missing "explanation" field in the
+     * response), returns a fallback string instead of throwing — so a broken
+     * API call never crashes the app, it just shows a generic message.
+     */
     suspend fun explain(text: String, classification: String, riskScore: Float): String =
         withContext(Dispatchers.IO) {
             Log.d("LlmExplainer", "Getting explanation for: $text")

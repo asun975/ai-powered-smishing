@@ -5,11 +5,29 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 
+/**
+ * The background retry worker for offline mode. Scheduled by MainActivity
+ * (via scheduleAnalysisWorker()) whenever a message couldn't be classified
+ * because the classifier API was unreachable — this worker runs later, once
+ * WorkManager's network constraint is satisfied, and tries again for every
+ * message still sitting in "pending" status.
+ */
 class SmishingAnalysisWorker(
     appContext: Context,
     workerParams: WorkerParameters
 ) : CoroutineWorker(appContext, workerParams) {
 
+    /**
+     * Loads every message currently marked "pending" from the database and
+     * re-runs the full classify -> explain -> URL-scan pipeline for each one
+     * (mirroring what classifyMessage() does in MainActivity, since this
+     * worker can't rely on MainActivity being alive to do it). For any risky
+     * result, updates the database and sends a notification, same as the
+     * live path. If any message still fails (classifier still unreachable,
+     * or an unexpected exception), returns Result.retry() so WorkManager
+     * schedules another attempt later using its backoff policy; only
+     * returns Result.success() once every pending message has been handled.
+     */
     override suspend fun doWork(): Result {
         Log.d("SmishingWorker", "Starting background analysis for pending messages")
         
