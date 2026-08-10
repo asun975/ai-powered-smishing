@@ -8,12 +8,19 @@ import android.widget.ImageButton
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
+/**
+ * Feeds the message list (Caution/Quarantine/Pending tabs) into the
+ * RecyclerView on SuspiciousMessagesActivity. Each row shows a message's
+ * date, sender, preview text, and a colored risk-score badge; tapping a row
+ * opens its detail screen, tapping the ⋮ button opens its quick-action menu.
+ */
 class MessageAdapter(
     private val messages: MutableList<Map<String, String>>,
     private val onItemClick: (Map<String, String>) -> Unit,
     private val onMenuClick: (Map<String, String>, View) -> Unit
 ) : RecyclerView.Adapter<MessageAdapter.ViewHolder>() {
 
+    /** Holds references to one row's views (item_message.xml), found once and reused as rows scroll. */
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val dateText: TextView = view.findViewById(R.id.tvDate)
         val phoneText: TextView = view.findViewById(R.id.tvPhone)
@@ -22,12 +29,21 @@ class MessageAdapter(
         val menuButton: ImageButton = view.findViewById(R.id.btnMenu)
     }
 
+    /** Inflates item_message.xml into a new row and wraps it in a ViewHolder. Called by RecyclerView as needed, not once per row. */
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_message, parent, false)
         return ViewHolder(view)
     }
 
+    /**
+     * Fills one row's views with a specific message's data: formats the raw
+     * timestamp into a readable date, shows the phone/message preview, shows
+     * "..." for the risk score while a message is still pending (since it
+     * has no real score yet), and colors the risk badge based on status
+     * (red = quarantined, orange = caution, gray = pending, green = safe/other).
+     * Also wires up the row's tap and menu-button click handlers.
+     */
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val msg = messages[position]
 
@@ -68,14 +84,26 @@ class MessageAdapter(
         holder.menuButton.setOnClickListener { onMenuClick(msg, holder.menuButton) }
     }
 
+    /** Tells RecyclerView how many rows to draw — one per message currently loaded. */
     override fun getItemCount() = messages.size
 
+    /**
+     * Replaces the adapter's entire dataset (e.g. after switching tabs or
+     * after an action like Block/Mark Safe changes what should be shown) and
+     * tells the RecyclerView to redraw everything.
+     */
     fun updateData(newMessages: List<Map<String, String>>) {
         messages.clear()
         messages.addAll(newMessages)
         notifyDataSetChanged()
     }
 
+    /**
+     * Converts the database's raw timestamp format ("yyyy-MM-dd HH:mm:ss")
+     * into a friendlier display format ("MMM d, h:mm a", e.g. "Jul 10, 2:13 PM").
+     * Falls back to showing the raw string unchanged if parsing fails for
+     * any reason, rather than crashing or showing a blank date.
+     */
     private fun formatDate(raw: String): String {
         return try {
             val inputFormat = java.text.SimpleDateFormat(

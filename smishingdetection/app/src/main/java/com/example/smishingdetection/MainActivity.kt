@@ -59,6 +59,13 @@ class MainActivity : AppCompatActivity() {
     private var currentSender: String? = null
     private var currentMessageBody: String? = null
 
+    /**
+     * Runs once when the screen is first created. Wires up all the UI views,
+     * creates the classifier/LLM/database/URL-analyzer objects using the
+     * configured API endpoints, sets up the "open inbox" button, then asks
+     * for permissions (which — once granted — kicks off SMS detection),
+     * schedules the offline retry worker, and starts listening for it.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         supportActionBar?.hide()    //hides the default title bar at the top which caused issues on different phones
         super.onCreate(savedInstanceState)
@@ -133,7 +140,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Renders a DB row (already-analyzed message) onto the risk/explanation/URL views. */
+    /**
+     * Renders a DB row (an already-analyzed message) onto the risk-verdict,
+     * explanation, and URL-scan views — used specifically for the "resume after
+     * offline retry" flow, not the normal live-message path.
+     */
     private fun updateUIWithAnalyzedMessage(msg: Map<String, String>) {
         val riskScore = msg[DatabaseHelper.COL_RISK_SCORE]?.toDoubleOrNull() ?: 0.0
         val riskCategory = when {
@@ -240,12 +251,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Kicks off SMS detection. Name is a leftover from when this app used both
+     * a BroadcastReceiver AND a ContentObserver — it now only starts the
+     * database observer, since the broadcast receiver was removed.
+     */
     private fun startBothDetectionMethods() {
         Log.d("MainActivity", "========== STARTING DETECTION ==========")
         resultTextView.text = "✅ Ready! Waiting for SMS..."
         startDatabaseObserver()
     }
 
+    /**
+     * Registers a ContentObserver on Android's SMS table. Any change to that
+     * table triggers onChange(), which then checks what the newest message is.
+     */
     private fun startDatabaseObserver() {
         smsObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
@@ -256,6 +276,11 @@ class MainActivity : AppCompatActivity() {
         contentResolver.registerContentObserver(Telephony.Sms.CONTENT_URI, true, smsObserver!!)
     }
 
+    /**
+     * Queries the SMS table for the single most recent message. If it's one
+     * we haven't already processed (by row ID), hands it off to
+     * processSmsMessage() for cleaning and analysis.
+     */
     private fun checkLatestSms() {
         try {
             val cursor: Cursor? = contentResolver.query(
@@ -281,6 +306,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * The entry point for "a message arrived, now what." Cleans the raw text
+     * (extracts any URL, strips PII for the classifier, masks PII for the LLM),
+     * then runs deduplication, re-entrancy, and blank-message checks. If none
+     * of those bail it out, updates the UI to an "Analyzing..." state and hands
+     * off to classifyMessage() on a coroutine.
+     */
     private fun processSmsMessage(
         sender: String,
         body: String,
@@ -332,6 +364,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Converts a classifier label + confidence into a 0-1 risk score and a
+     * Low/Medium/High category. Flips the confidence when the label is SAFE,
+     * since a confident "SAFE" call means LOW risk, not high.
+     */
     private fun getRiskScore(label: String, confidence: Float): Pair<Float, String> {
         val riskScore = if (label == "SPAM") confidence else (1 - confidence)
         val riskCategory = when {
@@ -342,6 +379,11 @@ class MainActivity : AppCompatActivity() {
         return Pair(riskScore, riskCategory)
     }
 
+    /**
+     * Builds and shows the in-app AlertDialog popup for a risky message —
+     * used only when the app is in the foreground. Its "View Details" button
+     * launches MessageDetailActivity with all the message's data attached.
+     */
     private fun showSmishingDialog(
         sender: String,
         originalBody: String,
@@ -378,6 +420,13 @@ class MainActivity : AppCompatActivity() {
         builder.show()
     }
 
+    /**
+     * The core pipeline for a new message: classify it, queue it for offline
+     * retry if the classifier API is unreachable, get an LLM explanation for
+     * risky messages, scan any URL found, save MEDIUM/HIGH risk messages to
+     * the database, and finally either show the in-app dialog (foreground) or
+     * a system notification (background).
+     */
     private suspend fun classifyMessage(
         sender: String,
         originalBody: String,
@@ -533,6 +582,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Unregisters the SMS observer when the Activity is destroyed, so it doesn't leak. */
     override fun onDestroy() {
         super.onDestroy()
         smsObserver?.let {

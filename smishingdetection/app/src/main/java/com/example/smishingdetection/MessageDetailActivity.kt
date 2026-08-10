@@ -23,6 +23,13 @@ class MessageDetailActivity : AppCompatActivity() {
     private var status: String = "caution"
     private var phoneNumber: String = ""
 
+    /**
+     * Runs once when this screen is opened. Reads all the message data passed
+     * in via Intent extras (phone, date, message text, risk score, status,
+     * explanation, DB row ID, URL scan result), populates the views with it,
+     * and wires up the four action buttons: Quarantine (caution messages
+     * only), Mark Safe, Block, and Delete.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
@@ -99,6 +106,13 @@ class MessageDetailActivity : AppCompatActivity() {
     }
 
 
+    /**
+     * Shows a confirmation dialog before blocking the sender's number.
+     * Copies the phone number to the clipboard and then opens Android's
+     * built-in blocked-numbers settings screen, since the app itself can't
+     * silently block a number system-wide — the user has to paste it in
+     * there themselves.
+     */
     private fun blockNumber() {
         AlertDialog.Builder(this)
             .setTitle("Block Number")
@@ -118,6 +132,10 @@ class MessageDetailActivity : AppCompatActivity() {
             .show()
     }
 
+    /**
+     * Shows a confirmation dialog before permanently deleting this message
+     * from the local database, then closes this screen if confirmed.
+     */
     private fun confirmDelete() {
         AlertDialog.Builder(this)
             .setTitle("Delete Message")
@@ -131,6 +149,7 @@ class MessageDetailActivity : AppCompatActivity() {
             .show()
     }
 
+    /** Handles the toolbar's back arrow (top-left "up" button) by closing this screen. */
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == android.R.id.home) {
             finish()
