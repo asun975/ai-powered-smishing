@@ -1,28 +1,32 @@
 from flask import Flask, request, jsonify
 from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
+from huggingface_hub import login
 import os
 
 app = Flask(__name__)
 
-# Read environment secret for model's access token
-# Use a fine-grained access token to read your model's repository
-access_token = os.environ["HF_TOKEN"]
+# Login to Hugging Face with token from environment
+HF_TOKEN = os.environ.get("HF_TOKEN")
+if HF_TOKEN:
+    login(token=HF_TOKEN)
+    print("Logged in to Hugging Face!")
 
+# Load model
 print("Loading model...")
-MODEL_NAME = "username/huggingface-model"
+MODEL_NAME = "totoro2211/sms-smishing-distilbert"
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, token=access_token)
-model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, token=access_token)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
 
 classifier = pipeline(
-    "text-classification", 
-    model=model, 
-    tokenizer=tokenizer, 
+    "text-classification",
+    model=model,
+    tokenizer=tokenizer,
     return_token_type_ids=False
 )
 
 print("Model loaded!")
-    
+
 # --- Error handlers ---
 @app.errorhandler(400)
 def bad_request(e):
@@ -46,7 +50,7 @@ def classify():
 
     text = data.get('text', '')
 
-    # Return status code 400 for empty text
+    # Match Yugveer's exact 400 behaviour for empty text
     if not text:
         return jsonify({"error": "No text provided"}), 400
 
