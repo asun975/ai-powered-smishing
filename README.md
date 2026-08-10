@@ -25,10 +25,10 @@ easily recognize smishing attempts and patterns so they can better protect their
 The detection model, sms-spam-model-v2, was tested using benign and smishing messages from the Kaggle dataset SMS Smishing Collection Data Set, and SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION dataset from Mendeley. The test dataset was preprocessed and sanitized to closely replicate the real conditions of SMS messages passed into our model
 
 We evaluated the model using scikit learn metrics for accuracy, F1 score, precision, recall and a confusion matrix.
-- **Accuracy**: 94.6%
-- **F1 Score**: 96.0%
-- **Precision**: 94.5%
-- **Recall**: 97.6%
+- **Accuracy**: 94.3%
+- **F1 Score**: 95.8%
+- **Precision**: 93.3%
+- **Recall**: 98.5%
 
 ### Risk Score System
 Risk score is derived from the confidence level and label returned by classifier. 

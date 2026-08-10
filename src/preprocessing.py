@@ -54,7 +54,20 @@ def sanitize_text(sms_text: str) -> str:
     sms_text = _BANK_RE.sub("", sms_text)
     sms_text = _MFA_RE.sub("", sms_text)
     sms_text = _IP_ADDRESS_RE.sub("", sms_text)
+    sms_text = _URL_RE.sub("", sms_text)
     return sms_text
+
+# Remove PII, nonalphanumeric characters, emoji unicode characters, 
+# punctuation and extra whitespace
+def preprocessClassifierText(text: str) -> str:
+    input = sanitize_text(text).lower()
+    input = re.sub("[^a-z0-9\\s]", "", input)
+    input = _EMOJI_RE.sub("", input)
+    input = _SPECIAL_CHAR_RE.sub(" ", input) # prevent words from joining
+    input = _WHITESPACE_RE.sub(" ", input) # remove extra whitespaces
+    input = input.strip()
+    return input
+
 
 # Separate url removal to compare model performance
 def removeUrl(sms_text: str) -> str:
