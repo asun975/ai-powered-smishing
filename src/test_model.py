@@ -3,6 +3,9 @@ import os
 import pandas as pd
 import time
 import torch
+import seaborn as sns
+import matplotlib
+matplotlib.use('agg')
 
 from datasets import Dataset
 from sklearn.metrics import (
@@ -191,6 +194,28 @@ def main():
         df_results = pd.DataFrame.from_dict(all_results)
         df_results.to_csv(TEST_RESULTS, index=False)
         print("Saved all results to " + TEST_RESULTS)
+
+        # Save confusion matrix with seaborn
+        matplotlib.pyplot.figure(figsize=(6, 5))
+
+        sns.heatmap(
+            cm,
+            annot=True,  # Show numbers inside the squares
+            fmt="d",  # Format values as integers (prevents scientific notation)
+            cmap="Blues",  # Color palette scheme
+            xticklabels=["Benign", "Smishing"],  # X-axis custom labels
+            yticklabels=["Benign", "Smishing"]  # Y-axis custom labels
+        )
+
+        matplotlib.pyplot.title("DistilBERT Classifier: Benign vs Smishing", fontsize=14, pad=15)
+        matplotlib.pyplot.xlabel("Predicted Labels", fontsize=12)
+        matplotlib.pyplot.ylabel("Actual Labels", fontsize=12)
+
+        # Check if plot dir exists before saving image
+        plots_dir = os.path.join('src','plots')
+        if not os.path.exists(plots_dir):
+            os.mkdir(plots_dir)
+        matplotlib.pyplot.savefig(os.path.join(plots_dir, "fig1_distilbert_confusion_matrix.png"))
     
     except Exception as e:
             print(f"An unexpected exception occured of type {type(e)}")
