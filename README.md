@@ -46,9 +46,12 @@ When an SMS message is passed through the model, it is first tokenized into smal
     - [Usage](#about-project)
     - [Classification Model](#model-evaluation)
     - [Risk Scoring](#risk-score-system)
+    - [Smishing Detector App](smishingdetection/README.md#smishing-detector-app)
+    - [Classifier API endpoints](hugging-face/distilbert/README.md#endpoints)
+    - [LLM API endpoints](hugging-face/distilbert/README.md#endpoints)
 - Set-up
     - [Training and Testing our classifier model](#traintest-distilbert-text-classification-model)
-    - [Classifier and LLM APIs](#set-up-hugging-face-spaces-api)
+    - [Hugging Face hosted APIs](#set-up-hugging-face-spaces-api)
     - [Deploy Smishing Detector App](#set-up-in-android-studio)
 - [Project Structure](#project-structure)
 - [Known issues and Limitations](#known-issues-or-limitations)
@@ -81,8 +84,7 @@ This trains a base DistilBERT model on the SMS Spam Collection dataset and saves
 
 train_model.py provides additional training on URLs using a kaggle dataset for malicious URL detection. This model is saved to models/sms-spam-model-v2/
 
-### Set-up Hugging Face Spaces API
-#### Set-up Classifier API
+## Set-up Hugging Face Spaces API
 1. Create Huggingface Space Account: https://huggingface.co/spaces
 2. Create Huggingface Spaces for the classifier model and LLM
 3. Update app.py from hugging-face/groq-llama and hugging-face/distilbert
