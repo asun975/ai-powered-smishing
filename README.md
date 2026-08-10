@@ -1,15 +1,10 @@
 # AI-Powered Smishing Detection
 
+## Usage
 We present an Android application capable of performing real‑time analysis of incoming SMS messages to detect potential smishing (SMS phishing) attempts. Our motivation for this project is to create an app that helps people
 easily recognize smishing attempts and patterns so they can better protect their information online.
 
 ​Incoming SMS messages are evaluated using a text classification API that assigns a dynamic risk score, and a Large Language Model (LLM) API will generate clear, human‑readable explanations describing why the message was flagged. Based on the assessed risk level, the app can trigger alerts, quarantine suspicious messages, or allow the user to block the sender.
-## Index
-- [About Project]()
-- [Usage]()
-    - []
-
-## Usage
 
 ### Features
 - 🔍 **Real‑time SMS scanning**
@@ -46,29 +41,22 @@ private fun getRiskScore(label: String, confidence: Float): Pair<Float, String> 
 #### How the confidence score is calculated by the classifier model
 When an SMS message is passed through the model, it is first tokenized into smaller units (tokens), which are then embedded into numerical vectors. These embeddings are processed through multiple transformer layers that use learned weights and attention mechanisms to capture contextual relationships between words, such as urgency, intent, and suspicious patterns. The final layer of the model outputs raw prediction values called logits, which are then passed through a SoftMax function to convert them into probabilities. The highest probability corresponds to the predicted class, and this value is reported as the confidence score. Therefore, the confidence score is influenced by the model’s learned parameters (weights and biases), the contextual meaning of the input text, and the relative strength of features such as keywords, structure, and semantic patterns identified during training. 
 
-## Project Structure
-```
-.
-├── docs/
-├── fastapi-url-analyzer/
-├── hugging-face/
-│   ├── distilbert/
-│   └── groq-llm/
-├── smishingdetection/
-├── src/
-├── .gitignore
-├── README.md
-└── requirements.txt
-```
-| SubModule Name | Description |
-|---|---|
-| docs | Reports and findings of application testing |
-| fastapi-url-analyzer | A fastAPI service layer between urlscan.io API endpoints and application logic  |
-| hugging-face | hugging face spaces API endpoint set for our classifier model and LLM |
-| smishingdetection | Android Studio project directory |
-| src | Source code to train and test our classifier model |
+## Index
+- About
+    - [Usage](#about-project)
+    - [Classification Model](#model-evaluation)
+    - [Risk Scoring](#risk-score-system)
+- Set-up
+    - [Training and Testing our classifier model](#traintest-distilbert-text-classification-model)
+    - [Classifier and LLM APIs](#set-up-hugging-face-spaces-api)
+    - [Deploy Smishing Detector App](#set-up-in-android-studio)
+- [Project Structure](#project-structure)
+- [Known issues and Limitations](#known-issues-or-limitations)
+- [Acknowledgments - Datsets and Models](#acknowledgements)
+- [Team](#team)
 
-## Set-up Project
+
+## Train/test DistilBERT text classification model
 ```bash
 git clone https://github.com:asun975/ai-powered-smishing.git
 cd ai-powered-smishing
@@ -133,6 +121,28 @@ SCAN_API_URL = "http://10.0.2.2:8000"
 4. Make sure the Python API is running on your PC (`ai-powered-smishing/fastapi-url-analyzer/api.py`)
 5. Click the green **Run** button → select your emulator
 
+## Project Structure
+```
+.
+├── docs/
+├── fastapi-url-analyzer/
+├── hugging-face/
+│   ├── distilbert/
+│   └── groq-llm/
+├── smishingdetection/
+├── src/
+├── .gitignore
+├── README.md
+└── requirements.txt
+```
+| SubModule Name | Description |
+|---|---|
+| docs | Reports and findings of application testing |
+| fastapi-url-analyzer | A fastAPI service layer between urlscan.io API endpoints and application logic  |
+| hugging-face | hugging face spaces API endpoint set for our classifier model and LLM |
+| smishingdetection | Android Studio project directory |
+| src | Source code to train and test our classifier model |
+
 ## Known issues or limitations
 - Model bias due to limited or outdated dataset for mobile smishing and URL detection
 - False positive/negatives and LLM hallucination
@@ -160,7 +170,6 @@ SCAN_API_URL = "http://10.0.2.2:8000"
 https://console.groq.com/docs/model/openai/gpt-oss-120b
 
 ## Team
-[<img src="https://github.com/{{ contributor }}.png" width="60px;"/><br /><sub><ahref="https://github.com/{{ contributor }}">{{ contributor }}</a></sub>](https://github.com/{{ contributor }}/{{ repository }}
 - Rachna Alleear
 - Gustavo De Vera Teixeira
 - Yugveer Sidhu
