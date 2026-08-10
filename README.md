@@ -1,13 +1,21 @@
 # AI-Powered Smishing Detection
 
-Our project is an Android application capable of performing real‑time analysis of incoming SMS messages to detect potential smishing (SMS phishing) attempts. Incoming SMS messages are evaluated using a text classification API that assigns a dynamic risk score, and a Large Language Model (LLM) API will generate clear, human‑readable explanations describing why the message was flagged. Based on the assessed risk level, the app can trigger alerts, quarantine suspicious messages, or allow the user to block the sender.
+We present an Android application capable of performing real‑time analysis of incoming SMS messages to detect potential smishing (SMS phishing) attempts. Our motivation for this project is to create an app that helps people
+easily recognize smishing attempts and patterns so they can better protect their information online.
+
+​Incoming SMS messages are evaluated using a text classification API that assigns a dynamic risk score, and a Large Language Model (LLM) API will generate clear, human‑readable explanations describing why the message was flagged. Based on the assessed risk level, the app can trigger alerts, quarantine suspicious messages, or allow the user to block the sender.
+## Index
+- [About Project]()
+- [Usage]()
+    - []
+
 ## Usage
 
 ### Features
 - 🔍 **Real‑time SMS scanning**
 - 🔒 **Data‑cleaning module** (text preprocessing and data sanitization)
 - 🧠 **Risk scoring via classification API**
-- **URL sandbox analysis**
+- 🔗 **URL sandbox analysis**
 - 💬 **LLM‑generated explanations** for flagged messages
 - 🔔 **User alerts** for suspicious content
 - 🛡️ **Quarantine simulation** for high‑risk messages
@@ -41,27 +49,24 @@ When an SMS message is passed through the model, it is first tokenized into smal
 ## Project Structure
 ```
 .
+├── docs/
+├── fastapi-url-analyzer/
 ├── hugging-face/
 │   ├── distilbert/
-│   │   ├── app.py
-│   │   ├── Dockerfile
-│   │   └── requirements.txt
-│   └── groq-llama/
-│       ├── app.py
-│       ├── Dockerfile
-│       └── requirements.txt
-├── smishingdetection
+│   └── groq-llm/
+├── smishingdetection/
 ├── src/
-│   ├── distilbert_model_prototype.py
-│   ├── prepare_data_nlp.py
-│   ├── preprocessing.py
-│   ├── test_model.py
-│   ├── test_preprocessing.py
-│   └── train_model.py
 ├── .gitignore
 ├── README.md
 └── requirements.txt
 ```
+| SubModule Name | Description |
+|---|---|
+| docs | Reports and findings of application testing |
+| fastapi-url-analyzer | A fastAPI service layer between urlscan.io API endpoints and application logic  |
+| hugging-face | hugging face spaces API endpoint set for our classifier model and LLM |
+| smishingdetection | Android Studio project directory |
+| src | Source code to train and test our classifier model |
 
 ## Set-up Project
 ```bash
@@ -81,8 +86,8 @@ Save training datasets to ai-powered-smishing/data/
 python src/distilbert_model_prototype.py
 python src/train_model.py
 
-# Generate explanation for assigned risk score with Tiny Llama
-python src/tinyllama.py
+# Tests sms-spam-model-v2 
+python src/test_model.py
 ```
 This trains a base DistilBERT model on the SMS Spam Collection dataset and saves the model locally to models/sms-spam-model/
 
@@ -106,10 +111,8 @@ POST /explain
 - Expects: JSON {"text": "cleaned SMS text", "classification": "SPAM" or "SAFE", "risk_score": 0.87 }
 - Returns: JSON { "explanation": explanation, "classification": classification, "risk_score": risk_score, "version": "model_version"}
 
-## Android App
+## Set-up in Android Studio
 The `smishingdetection/` folder contains the Android Studio project source.
-
-### Setup in Android Studio
 
 1. Clone this repository in Android Studio
 2. In Android Studio, go to File > Open and open the folder ai-powered-smishing/smishingdetection/
@@ -135,6 +138,8 @@ SCAN_API_URL = "http://10.0.2.2:8000"
 - False positive/negatives and LLM hallucination
 - Mobile resource constraints like battery, storage, and CPU/GPU memory
 - Android limitations on non-default apps ability to delete and block messages.
+- Timeout limits for urlscan.io sandbox API
+- Application uses allows cleartext (HTTP) traffic for the URL sandbox
 
 ## Acknowledgements
 ### Datasets
@@ -151,14 +156,12 @@ SCAN_API_URL = "http://10.0.2.2:8000"
 - [DistilBERT docs](https://huggingface.co/docs/transformers/en/model_doc/distilbert?usage=Pipeline#transformers.DistilBertModel)
 - [transformers installation](https://huggingface.co/docs/transformers/en/installation)
 
-### Tiny Llama LLM
-https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0
-
 ### Llama 4 Scout - Groq
-https://console.groq.com/docs/model/meta-llama/llama-4-scout-17b-16e-instruct
+https://console.groq.com/docs/model/openai/gpt-oss-120b
 
 ## Team
+[<img src="https://github.com/{{ contributor }}.png" width="60px;"/><br /><sub><ahref="https://github.com/{{ contributor }}">{{ contributor }}</a></sub>](https://github.com/{{ contributor }}/{{ repository }}
 - Rachna Alleear
 - Gustavo De Vera Teixeira
-- Ashley Sun
 - Yugveer Sidhu
+- Ashley Sun
