@@ -17,10 +17,10 @@ Our project is an Android application capable of performing real‑time analysis
 The detection model, sms-spam-model-v2, was tested using benign and smishing messages from the Kaggle dataset SMS Smishing Collection Data Set, and SMS PHISHING DATASET FOR MACHINE LEARNING AND PATTERN RECOGNITION dataset from Mendeley. The test dataset was preprocessed and sanitized to closely replicate the real conditions of SMS messages passed into our model
 
 We evaluated the model using scikit learn metrics for accuracy, F1 score, precision, recall and a confusion matrix.
-- **Accuracy**: 94.6%
-- **F1 Score**: 96.0%
-- **Precision**: 94.5%
-- **Recall**: 97.6%
+- **Accuracy**: 94.3%
+- **F1 Score**: 95.8%
+- **Precision**: 93.3%
+- **Recall**: 98.5%
 
 ### Risk Score System
 Risk score is derived from the confidence level and label returned by classifier. 
@@ -81,8 +81,6 @@ Save training datasets to ai-powered-smishing/data/
 python src/distilbert_model_prototype.py
 python src/train_model.py
 
-# Generate explanation for assigned risk score with Tiny Llama
-python src/tinyllama.py
 ```
 This trains a base DistilBERT model on the SMS Spam Collection dataset and saves the model locally to models/sms-spam-model/
 

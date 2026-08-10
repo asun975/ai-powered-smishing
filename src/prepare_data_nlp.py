@@ -1,5 +1,5 @@
 import pandas as pd
-from os import path
+import os
 
 """
 To create test_samples.csv:
@@ -13,6 +13,7 @@ python src/prepare_data.py
 """
 KAGGLE_DATA = "data/SMSSmishCollection.txt"
 MENDELEY_DATA = "data/Dataset_5971.csv"
+SAVE_DIR = "src/data/"
 
 def print_info(df):
     print(f"Total samples {df.shape[0]}")
@@ -21,16 +22,19 @@ def print_info(df):
 
 if __name__ == "__main__":
 
-    if not path.exists(KAGGLE_DATA):
+    if not os.path.exists(KAGGLE_DATA):
         raise FileNotFoundError(f"""Missing dataset at {KAGGLE_DATA}
             Download from:
             https://www.kaggle.com/datasets/galactus007/sms-smishing-collection-data-set
             """)
-    if not path.exists(MENDELEY_DATA):
+    if not os.path.exists(MENDELEY_DATA):
         raise FileNotFoundError(f"""Missing dataset at {MENDELEY_DATA}
             Download from:
             https://data.mendeley.com/datasets/f45bkkt8pr/1
             """)
+    if not os.path.exists(SAVE_DIR):
+        os.mkdir(SAVE_DIR)
+        print(f"Directory {SAVE_DIR} created!")
     
     kaggle_df = pd.read_csv(KAGGLE_DATA, sep="\t", header=None, names=['label', 'text'])
 
@@ -68,8 +72,9 @@ if __name__ == "__main__":
     print_info(df_result)
 
     # Save test dataset
-    df_result.to_csv('data/test_samples.csv', index=False)
+    dataset = os.path.join(SAVE_DIR, "test_samples.csv")
+    df_result.to_csv(dataset, index=False)
 
     # Load test data
-    test_df = pd.read_csv('data/test_samples.csv')
+    test_df = pd.read_csv(dataset)
     print(test_df.head())
