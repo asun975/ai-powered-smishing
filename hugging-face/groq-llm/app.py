@@ -5,12 +5,11 @@ import os
 app = Flask(__name__)
 
 # Groq client — reads API key from environment secret
-GROQ_API_KEY = os.environ.get("HF_TOKEN")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY)
 
-# Groq's hosted Gemma 2b model name
-# Llama 4 Scout - best for explanations
-GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct" 
+# Groq's hosted openai/gpt-oss-120b model
+GROQ_MODEL = "openai/gpt-oss-120b"
 
 print("Groq LLM API ready!")
 
@@ -78,11 +77,14 @@ def explain():
                     "content": build_prompt(sms_text, risk_score, classification)
                 }
             ],
-            max_tokens=150,
-            temperature=0.7
+            max_tokens=500,
+            temperature=0.7,
+            reasoning_effort="low"
         )
 
-        explanation = chat_completion.choices[0].message.content.strip()
+        explanation = (chat_completion.choices[0].message.content or "").strip()
+        if not explanation:
+            return jsonify({"error": "Model returned no explanation"}), 502
 
         return jsonify({
             "explanation": explanation,

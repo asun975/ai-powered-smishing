@@ -1,13 +1,16 @@
 # AI-Powered Smishing Detection
 
-Our project is an Android application capable of performing real‑time analysis of incoming SMS messages to detect potential smishing (SMS phishing) attempts. Incoming SMS messages are evaluated using a text classification API that assigns a dynamic risk score, and a Large Language Model (LLM) API will generate clear, human‑readable explanations describing why the message was flagged. Based on the assessed risk level, the app can trigger alerts, quarantine suspicious messages, or allow the user to block the sender.
 ## Usage
+We present an Android application capable of performing real‑time analysis of incoming SMS messages to detect potential smishing (SMS phishing) attempts. Our motivation for this project is to create an app that helps people
+easily recognize smishing attempts and patterns so they can better protect their information online.
+
+​Incoming SMS messages are evaluated using a text classification API that assigns a dynamic risk score, and a Large Language Model (LLM) API will generate clear, human‑readable explanations describing why the message was flagged. Based on the assessed risk level, the app can trigger alerts, quarantine suspicious messages, or allow the user to block the sender.
 
 ### Features
 - 🔍 **Real‑time SMS scanning**
 - 🔒 **Data‑cleaning module** (text preprocessing and data sanitization)
 - 🧠 **Risk scoring via classification API**
-- **URL sandbox analysis**
+- 🔗 **URL sandbox analysis**
 - 💬 **LLM‑generated explanations** for flagged messages
 - 🔔 **User alerts** for suspicious content
 - 🛡️ **Quarantine simulation** for high‑risk messages
@@ -38,32 +41,25 @@ private fun getRiskScore(label: String, confidence: Float): Pair<Float, String> 
 #### How the confidence score is calculated by the classifier model
 When an SMS message is passed through the model, it is first tokenized into smaller units (tokens), which are then embedded into numerical vectors. These embeddings are processed through multiple transformer layers that use learned weights and attention mechanisms to capture contextual relationships between words, such as urgency, intent, and suspicious patterns. The final layer of the model outputs raw prediction values called logits, which are then passed through a SoftMax function to convert them into probabilities. The highest probability corresponds to the predicted class, and this value is reported as the confidence score. Therefore, the confidence score is influenced by the model’s learned parameters (weights and biases), the contextual meaning of the input text, and the relative strength of features such as keywords, structure, and semantic patterns identified during training. 
 
-## Project Structure
-```
-.
-├── hugging-face/
-│   ├── distilbert/
-│   │   ├── app.py
-│   │   ├── Dockerfile
-│   │   └── requirements.txt
-│   └── groq-llama/
-│       ├── app.py
-│       ├── Dockerfile
-│       └── requirements.txt
-├── smishingdetection
-├── src/
-│   ├── distilbert_model_prototype.py
-│   ├── prepare_data_nlp.py
-│   ├── preprocessing.py
-│   ├── test_model.py
-│   ├── test_preprocessing.py
-│   └── train_model.py
-├── .gitignore
-├── README.md
-└── requirements.txt
-```
+## Index
+- About
+    - [Usage](#about-project)
+    - [Classification Model](#model-evaluation)
+    - [Risk Scoring](#risk-score-system)
+    - [Smishing Detector App](smishingdetection/README.md#smishing-detector-app)
+    - [Classifier API endpoints](hugging-face/distilbert/README.md#endpoints)
+    - [LLM API endpoints](hugging-face/distilbert/README.md#endpoints)
+- Set-up
+    - [Training and Testing our classifier model](#traintest-distilbert-text-classification-model)
+    - [Hugging Face hosted APIs](#set-up-hugging-face-spaces-api)
+    - [Deploy Smishing Detector App](#set-up-in-android-studio)
+- [Project Structure](#project-structure)
+- [Known issues and Limitations](#known-issues-or-limitations)
+- [Acknowledgments - Datsets and Models](#acknowledgements)
+- [Team](#team)
 
-## Set-up Project
+
+## Train/test DistilBERT text classification model
 ```bash
 git clone https://github.com:asun975/ai-powered-smishing.git
 cd ai-powered-smishing
@@ -81,13 +77,14 @@ Save training datasets to ai-powered-smishing/data/
 python src/distilbert_model_prototype.py
 python src/train_model.py
 
+# Tests sms-spam-model-v2 
+python src/test_model.py
 ```
 This trains a base DistilBERT model on the SMS Spam Collection dataset and saves the model locally to models/sms-spam-model/
 
 train_model.py provides additional training on URLs using a kaggle dataset for malicious URL detection. This model is saved to models/sms-spam-model-v2/
 
-### Set-up Hugging Face Spaces API
-#### Set-up Classifier API
+## Set-up Hugging Face Spaces API
 1. Create Huggingface Space Account: https://huggingface.co/spaces
 2. Create Huggingface Spaces for the classifier model and LLM
 3. Update app.py from hugging-face/groq-llama and hugging-face/distilbert
@@ -104,10 +101,8 @@ POST /explain
 - Expects: JSON {"text": "cleaned SMS text", "classification": "SPAM" or "SAFE", "risk_score": 0.87 }
 - Returns: JSON { "explanation": explanation, "classification": classification, "risk_score": risk_score, "version": "model_version"}
 
-## Android App
+## Set-up in Android Studio
 The `smishingdetection/` folder contains the Android Studio project source.
-
-### Setup in Android Studio
 
 1. Clone this repository in Android Studio
 2. In Android Studio, go to File > Open and open the folder ai-powered-smishing/smishingdetection/
@@ -128,11 +123,35 @@ SCAN_API_URL = "http://10.0.2.2:8000"
 4. Make sure the Python API is running on your PC (`ai-powered-smishing/fastapi-url-analyzer/api.py`)
 5. Click the green **Run** button → select your emulator
 
+## Project Structure
+```
+.
+├── docs/
+├── fastapi-url-analyzer/
+├── hugging-face/
+│   ├── distilbert/
+│   └── groq-llm/
+├── smishingdetection/
+├── src/
+├── .gitignore
+├── README.md
+└── requirements.txt
+```
+| SubModule Name | Description |
+|---|---|
+| docs | Reports and findings of application testing |
+| fastapi-url-analyzer | A fastAPI service layer between urlscan.io API endpoints and application logic  |
+| hugging-face | hugging face spaces API endpoint set for our classifier model and LLM |
+| smishingdetection | Android Studio project directory |
+| src | Source code to train and test our classifier model |
+
 ## Known issues or limitations
 - Model bias due to limited or outdated dataset for mobile smishing and URL detection
 - False positive/negatives and LLM hallucination
 - Mobile resource constraints like battery, storage, and CPU/GPU memory
 - Android limitations on non-default apps ability to delete and block messages.
+- Timeout limits for urlscan.io sandbox API
+- Application uses allows cleartext (HTTP) traffic for the URL sandbox
 
 ## Acknowledgements
 ### Datasets
@@ -149,14 +168,11 @@ SCAN_API_URL = "http://10.0.2.2:8000"
 - [DistilBERT docs](https://huggingface.co/docs/transformers/en/model_doc/distilbert?usage=Pipeline#transformers.DistilBertModel)
 - [transformers installation](https://huggingface.co/docs/transformers/en/installation)
 
-### Tiny Llama LLM
-https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0
-
 ### Llama 4 Scout - Groq
-https://console.groq.com/docs/model/meta-llama/llama-4-scout-17b-16e-instruct
+https://console.groq.com/docs/model/openai/gpt-oss-120b
 
 ## Team
 - Rachna Alleear
 - Gustavo De Vera Teixeira
-- Ashley Sun
 - Yugveer Sidhu
+- Ashley Sun
