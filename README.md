@@ -168,7 +168,7 @@ SCAN_API_URL = "http://10.0.2.2:8000"
 - [DistilBERT docs](https://huggingface.co/docs/transformers/en/model_doc/distilbert?usage=Pipeline#transformers.DistilBertModel)
 - [transformers installation](https://huggingface.co/docs/transformers/en/installation)
 
-### Llama 4 Scout - Groq
+### LLM openai/gpt-oss-120b - Groq
 https://console.groq.com/docs/model/openai/gpt-oss-120b
 
 ## Team
